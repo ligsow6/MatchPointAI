@@ -81,9 +81,11 @@ Chaque match est présenté deux fois à l'entraînement (du point de vue de cha
 
 ### Comparateur : prédiction à la demande, sans serveur
 
+![Comparateur : Sinner contre Alcaraz sur terre battue en Grand Chelem, probabilités calculées dans le navigateur, avec le Elo seul et le face-à-face pour comparaison](docs/comparateur.png)
+
 Un serveur Python ferait ce calcul plus simplement, mais il coûterait de l'argent ou s'endormirait après quelques minutes d'inactivité ; précalculer toutes les paires de joueurs grandirait au carré. Le calcul est donc fait dans le navigateur :
 
-1. **Modèle** : le LightGBM évalué ci-dessous est converti avec `onnxmltools.convert_lightgbm`, puis passé en double précision ([`pipeline/onnx_export.py`](pipeline/onnx_export.py)) et publié dans `web/public/model/matchpoint.onnx`. La conversion standard compare les valeurs en simple précision alors que LightGBM travaille en double : sur le modèle publié, elle s'écartait de plusieurs points de probabilité. L'export est refusé si l'écart entre ONNX Runtime et LightGBM dépasse **1e-6** sur les matchs de la période de test.
+1. **Modèle** : le LightGBM évalué ci-dessous est converti avec `onnxmltools.convert_lightgbm`, puis passé en double précision ([`pipeline/onnx_export.py`](pipeline/onnx_export.py)) et publié dans `web/public/model/matchpoint.onnx`. La conversion standard compare les valeurs en simple précision alors que LightGBM travaille en double : sur le modèle publié, elle s'écartait jusqu'à 4,8 points de probabilité, contre 8e-8 après passage en double précision. L'export est refusé si l'écart entre ONNX Runtime et LightGBM dépasse **1e-6** sur les matchs de la période de test.
 2. **Joueurs** : [`pipeline/export_players.py`](pipeline/export_players.py) écrit `web/public/data/players.json`, une ligne par joueur ayant au moins 5 matchs complets dans la base : identité, main, taille, date de naissance, Elo global et par surface, forme sur 10 et 20 matchs (toutes surfaces et par surface), service et retour sur fenêtre glissante, classement et âge au dernier match, date du dernier match. `web/public/data/h2h.json` contient les face-à-face des paires qui se sont déjà rencontrées.
 3. **Variables** : [`web/lib/features.ts`](web/lib/features.ts) reprend une à une les formules de [`pipeline/features.py`](pipeline/features.py). Le match imaginé est un premier tour du type de tournoi choisi, chaque joueur étant pris tel qu'il était à son dernier match connu et arrivant reposé (7 jours).
 4. **Calcul** : `onnxruntime-web` est chargé à la demande, au premier calcul sur la page `/comparateur` (le reste du site n'en paie pas le coût), puis la prévision est symétrisée comme pendant l'évaluation. Aucune requête réseau n'a lieu après ce premier chargement.
@@ -106,21 +108,21 @@ Période de test : 4 140 matchs, du 6 janvier 2025 au 7 juin 2026.
 | --- | ---: | ---: | ---: | ---: |
 | Elo par surface (baseline) | 64,8 % | 0,6342 | 0,2208 | 5,2 % |
 | Elo recalibré | 64,8 % | 0,6244 | 0,2178 | 1,9 % |
-| **LightGBM** | **66,3 %** | **0,6028** | **0,2088** | **1,9 %** |
+| **LightGBM** | **66,4 %** | **0,6024** | **0,2087** | **1,8 %** |
 
 Écart LightGBM − Elo, avec intervalle de confiance à 95 % (bootstrap apparié, 2 000 tirages) :
 
 | Métrique | Face au Elo | Face au Elo recalibré |
 | --- | --- | --- |
-| Exactitude | +1,6 pt [+0,4 ; +2,7] | +1,6 pt [+0,4 ; +2,7] |
-| Log loss | −0,031 [−0,041 ; −0,023] | −0,022 [−0,029 ; −0,014] |
-| Brier | −0,012 [−0,016 ; −0,008] | −0,009 [−0,012 ; −0,006] |
+| Exactitude | +1,6 pt [+0,5 ; +2,8] | +1,6 pt [+0,5 ; +2,8] |
+| Log loss | −0,032 [−0,041 ; −0,023] | −0,022 [−0,029 ; −0,015] |
+| Brier | −0,012 [−0,016 ; −0,009] | −0,009 [−0,012 ; −0,006] |
 
-**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,6 point d'exactitude, et un tiers des matchs restent mal prédits. Près d'un tiers du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (63,0 % contre 63,7 % d'exactitude sur 1 156 matchs).
+**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,6 point d'exactitude, et un tiers des matchs restent mal prédits. Près d'un tiers du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (62,7 % contre 63,7 % d'exactitude sur 1 156 matchs).
 
 ## Limites connues
 
-- **Joueurs peu connus du modèle** : seuls les matchs du circuit principal sont utilisés (pas les Challengers ni les qualifications), si bien qu'un joueur qui arrive sur le circuit démarre sans historique. Sur la période de test, l'exactitude ne s'effondre pas (66,5 % quand l'un des joueurs a moins de 30 matchs en base, 66,3 % sinon), mais ces prévisions reposent sur peu d'information.
+- **Joueurs peu connus du modèle** : seuls les matchs du circuit principal sont utilisés (pas les Challengers ni les qualifications), si bien qu'un joueur qui arrive sur le circuit démarre sans historique. Sur la période de test, l'exactitude baisse peu (65,9 % quand l'un des joueurs a moins de 30 matchs en base, 66,6 % sinon), mais ces prévisions reposent sur peu d'information.
 - **Blessures et contexte invisibles** : blessure en cours, maladie, motivation, météo, altitude, type de balle, salle ou extérieur ne sont pas dans les données.
 - **Exclusion des abandons** : on ne sait pas avant un match qu'il finira sur abandon ; les retirer de l'évaluation rend les scores légèrement optimistes, pour tous les modèles.
 - **Dates approximatives** : la base ne donne que la date de début du tournoi ; la date de chaque match est estimée selon le tour.
