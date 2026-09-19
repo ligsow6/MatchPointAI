@@ -1,5 +1,6 @@
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 RAW_DEFAULTS: dict[str, Any] = {
@@ -42,3 +43,34 @@ def raw_match(**overrides: Any) -> dict[str, Any]:
 
 def raw_frame(*rows: dict[str, Any]) -> pd.DataFrame:
     return pd.DataFrame(list(rows))
+
+
+def synthetic_history(players: int = 24, tournaments: int = 40, seed: int = 11) -> pd.DataFrame:
+    generator = np.random.default_rng(seed)
+    skill = generator.normal(0.0, 1.0, players)
+    rounds = ("R32", "R16", "QF", "SF", "F")
+    surfaces = ("Hard", "Clay", "Grass")
+    rows: list[dict[str, Any]] = []
+    start = pd.Timestamp(2015, 1, 5)
+    for tournament in range(tournaments):
+        tourney_date = start + pd.Timedelta(weeks=tournament)
+        surface = surfaces[tournament % len(surfaces)]
+        for number, round_code in enumerate(rounds, start=1):
+            first, second = generator.choice(players, size=2, replace=False)
+            first_wins = generator.uniform() < 1 / (1 + np.exp(skill[second] - skill[first]))
+            winner, loser = (first, second) if first_wins else (second, first)
+            rows.append(
+                raw_match(
+                    tourney_id=f"2015-{tournament:04d}",
+                    tourney_date=int(tourney_date.strftime("%Y%m%d")),
+                    surface=surface,
+                    match_num=number,
+                    round=round_code,
+                    winner_id=int(winner) + 100,
+                    loser_id=int(loser) + 100,
+                    winner_rank=int(players - skill.argsort().argsort()[winner]),
+                    loser_rank=int(players - skill.argsort().argsort()[loser]),
+                    score="W/O" if generator.uniform() < 0.03 else "6-4 6-4",
+                )
+            )
+    return raw_frame(*rows)
