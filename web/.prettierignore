@@ -2,3 +2,4 @@
 out
 node_modules
 public/data
+public/model
