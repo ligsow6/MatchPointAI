@@ -1,8 +1,8 @@
 # MatchPoint
 
-Prédiction de matchs de tennis ATP : un comparateur « n'importe qui contre n'importe qui » calculé dans le navigateur, un modèle LightGBM évalué sans filtre face à une baseline Elo par surface, et des finales mythiques rejouées point par point.
+🔗 Site en ligne : https://match-point-ai-five.vercel.app/
 
-**Site en ligne : lien Vercel à renseigner après le premier déploiement (voir « Intégration et déploiement continus »).**
+Prédiction de matchs de tennis ATP : un comparateur « n'importe qui contre n'importe qui » calculé dans le navigateur, un modèle LightGBM évalué sans filtre face à une baseline Elo par surface, et des finales mythiques rejouées point par point.
 
 ![Replay de la finale de Wimbledon 2019 : la probabilité de victoire de Federer monte à 98,7 % sur ses deux balles de match, avant le retour de Djokovic](docs/replay.gif)
 
