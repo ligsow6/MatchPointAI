@@ -390,10 +390,9 @@ export default function MethodologyPage() {
           <ul className={styles.limits}>
             <li>
               <strong>Joueurs peu connus du modèle.</strong> Seuls les matchs du circuit principal
-              sont utilisés : un joueur qui sort des Challengers n&apos;a presque pas
-              d&apos;historique.
+              sont utilisés : un joueur qui sort des Challengers arrive presque sans historique.
               {rookies && veterans
-                ? ` Quand l'un des deux joueurs a moins de 30 matchs en base, l'exactitude tombe à ${formatPercent(rookies.model.accuracy)}, contre ${formatPercent(veterans.model.accuracy)} sinon.`
+                ? ` Sur la période de test, l'écart reste faible (${formatPercent(rookies.model.accuracy)} d'exactitude quand l'un des joueurs a moins de 30 matchs en base, ${formatPercent(veterans.model.accuracy)} sinon), mais ces prévisions reposent sur peu d'information.`
                 : ""}
             </li>
             <li>

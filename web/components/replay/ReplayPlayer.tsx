@@ -201,8 +201,8 @@ export function ReplayPlayer({ replay }: { replay: Replay }) {
           ]}
         />
         <p className={styles.axisNote}>
-          Probabilité que {first} gagne le match, après chaque point (axe horizontal : numéro du
-          point).
+          Probabilité que {first} gagne le match après chaque point (axe horizontal : numéro du
+          point). Les traits verticaux marquent la fin de chaque set.
         </p>
         <ReplayChart replay={replay} visible={index} savedMatchPoints={savedMatchPoints} />
       </div>
