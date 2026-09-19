@@ -323,44 +323,49 @@ def point_payload(event: PointEvent) -> dict[str, Any]:
     }
 
 
-def key_moments(replay: MatchReplay) -> list[dict[str, Any]]:
+def french_decimal(value: float) -> str:
+    return f"{value:.1f}".replace(".", ",")
+
+
+def ordinal(number: int) -> str:
+    return "1er" if number == 1 else f"{number}e"
+
+
+def saved_label(count: int) -> str:
+    return "1re" if count == 1 else f"{count}e"
+
+
+def set_moment(replay: MatchReplay, event: PointEvent, index: int) -> dict[str, Any]:
     names = [short_name(player) for player in replay.players]
-    loser = 1 - replay.winner
-    probabilities = [replay.pre_match["model"], *(event.probability for event in replay.events)]
-    winner_view = [p if replay.winner == 0 else 1 - p for p in probabilities]
-    moments: list[dict[str, Any]] = []
+    games = replay.set_scores[index]
+    own, opposing = games[event.winner], games[1 - event.winner]
+    return {
+        "n": event.number,
+        "kind": "set",
+        "text": f"{names[event.winner]} remporte le {ordinal(index + 1)} set {own}-{opposing}.",
+    }
+
+
+def lowest_moment(replay: MatchReplay, winner_view: list[float]) -> dict[str, Any] | None:
     lowest_index = min(range(len(winner_view)), key=lambda index: winner_view[index])
-    if lowest_index > 0:
-        moments.append(
-            {
-                "n": replay.events[lowest_index - 1].number,
-                "kind": "low",
-                "text": f"Point le plus bas pour {names[replay.winner]} : "
-                f"{winner_view[lowest_index] * 100:.1f} % de chances de gagner.",
-            }
-        )
-    for event in replay.events:
-        if f"match_point_{loser}" in event.opportunities and event.winner == replay.winner:
-            moments.append(
-                {
-                    "n": event.number,
-                    "kind": "saved",
-                    "text": f"Balle de match sauvée par {names[replay.winner]}.",
-                }
-            )
-        if event.outcome == "set":
-            set_winner = names[event.winner]
-            moments.append(
-                {
-                    "n": event.number,
-                    "kind": "set",
-                    "text": f"{set_winner} remporte le set ({event.sets[0]}-{event.sets[1]}).",
-                }
-            )
+    if lowest_index == 0:
+        return None
+    name = short_name(replay.players[replay.winner])
+    chance = french_decimal(winner_view[lowest_index] * 100)
+    return {
+        "n": replay.events[lowest_index - 1].number,
+        "kind": "low",
+        "text": f"Point le plus bas pour {name}, futur vainqueur : {chance} % de chances.",
+    }
+
+
+def swing_moments(replay: MatchReplay, probabilities: list[float]) -> list[dict[str, Any]]:
+    names = [short_name(player) for player in replay.players]
     swings = sorted(
         range(1, len(probabilities)),
         key=lambda index: -abs(probabilities[index] - probabilities[index - 1]),
     )[:3]
+    moments: list[dict[str, Any]] = []
     for index in sorted(swings):
         change = (probabilities[index] - probabilities[index - 1]) * 100
         beneficiary = names[0] if change > 0 else names[1]
@@ -368,9 +373,38 @@ def key_moments(replay: MatchReplay) -> list[dict[str, Any]]:
             {
                 "n": replay.events[index - 1].number,
                 "kind": "swing",
-                "text": f"Plus forte bascule : +{abs(change):.1f} points pour {beneficiary}.",
+                "text": f"Bascule : +{french_decimal(abs(change))} points de probabilité "
+                f"pour {beneficiary}.",
             }
         )
+    return moments
+
+
+def key_moments(replay: MatchReplay) -> list[dict[str, Any]]:
+    loser = 1 - replay.winner
+    winner_name = short_name(replay.players[replay.winner])
+    probabilities = [replay.pre_match["model"], *(event.probability for event in replay.events)]
+    winner_view = [p if replay.winner == 0 else 1 - p for p in probabilities]
+    moments: list[dict[str, Any]] = []
+    lowest = lowest_moment(replay, winner_view)
+    if lowest is not None:
+        moments.append(lowest)
+    saved = 0
+    completed_sets = 0
+    for event in replay.events:
+        if f"match_point_{loser}" in event.opportunities and event.winner == replay.winner:
+            saved += 1
+            moments.append(
+                {
+                    "n": event.number,
+                    "kind": "saved",
+                    "text": f"{saved_label(saved)} balle de match sauvée par {winner_name}.",
+                }
+            )
+        if event.outcome in ("set", "match"):
+            moments.append(set_moment(replay, event, completed_sets))
+            completed_sets += 1
+    moments.extend(swing_moments(replay, probabilities))
     return sorted(moments, key=lambda moment: (moment["n"], moment["kind"]))
 
 
