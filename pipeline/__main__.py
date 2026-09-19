@@ -4,18 +4,17 @@ from datetime import date
 import pandas as pd
 
 from pipeline import config
+from pipeline.backtest import HeadlineResult, WalkForwardResult, headline_evaluation, walk_forward
 from pipeline.data import (
     clean_matches,
-    completed_mask,
     download_seasons,
     read_raw_matches,
     summarize,
     validate_matches,
 )
-from pipeline.elo import attach_elo, elo_probabilities
-from pipeline.metrics import score
+from pipeline.elo import attach_elo
+from pipeline.features import attach_player_features
 from pipeline.sources import resolve_match_source
-from pipeline.splits import TEST, assign_periods
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -38,17 +37,24 @@ def load_matches(refresh: bool, today: date) -> pd.DataFrame:
     return clean
 
 
-def report_baseline(matches: pd.DataFrame) -> None:
-    evaluated = completed_mask(matches) & (assign_periods(matches["tourney_date"]) == TEST)
-    selection = evaluated.to_numpy()
-    for name, probabilities in elo_probabilities(matches).items():
-        print(f"{name}: {score(probabilities[selection])}")
+def report(headline: HeadlineResult, history: WalkForwardResult) -> None:
+    for model_report in headline.reports:
+        print(f"{model_report.label}: {model_report.scores}")
+    for reference, differences in headline.differences.items():
+        print(f"LightGBM - {reference}: {differences}")
+    print(f"calibration: {headline.calibration.name} {headline.calibration.cross_fitted_log_loss}")
+    print(f"hyperparamètres: {headline.model.parameters} ({headline.model.rounds} arbres)")
+    for year in history.years:
+        print(year.year, {key: round(value.log_loss, 4) for key, value in year.scores.items()})
 
 
 def main() -> None:
     arguments = parse_arguments()
-    matches = attach_elo(load_matches(arguments.refresh, date.today()))
-    report_baseline(matches)
+    today = date.today()
+    matches = attach_player_features(attach_elo(load_matches(arguments.refresh, today)))
+    headline = headline_evaluation(matches, config.RANDOM_SEED)
+    history = walk_forward(matches, last_year=today.year, seed=config.RANDOM_SEED)
+    report(headline, history)
 
 
 if __name__ == "__main__":
