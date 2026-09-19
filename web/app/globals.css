@@ -1,10 +1,212 @@
+:root {
+  color-scheme: light;
+  --bg: #fafaf8;
+  --surface: #ffffff;
+  --surface-2: #f3f3f0;
+  --text: #121417;
+  --text-2: #464b53;
+  --muted: #62666e;
+  --border: #e2e2dd;
+  --grid: #ebebe6;
+  --axis: #c3c2b7;
+  --accent: #1c5cab;
+  --accent-hover: #184f95;
+  --accent-soft: #e8f0fb;
+  --on-accent: #ffffff;
+  --focus: #1c5cab;
+  --series-model: #2a78d6;
+  --series-elo: #eb6834;
+  --wash-model: rgba(42, 120, 214, 0.14);
+  --wash-elo: rgba(235, 104, 52, 0.14);
+  --positive: #006300;
+  --negative: #b42318;
+  --shadow: 0 1px 2px rgba(18, 20, 23, 0.04), 0 4px 16px rgba(18, 20, 23, 0.04);
+  --radius: 12px;
+  --radius-small: 8px;
+  --content-width: 72rem;
+  --gutter: 16px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #0f1012;
+    --surface: #17181b;
+    --surface-2: #1f2024;
+    --text: #f2f2f0;
+    --text-2: #c9c8c0;
+    --muted: #a3a29a;
+    --border: #2d2e32;
+    --grid: #26272b;
+    --axis: #45464b;
+    --accent: #86b6ef;
+    --accent-hover: #b7d3f6;
+    --accent-soft: #16253a;
+    --on-accent: #0f1012;
+    --focus: #86b6ef;
+    --series-model: #3987e5;
+    --series-elo: #d95926;
+    --wash-model: rgba(57, 135, 229, 0.2);
+    --wash-elo: rgba(217, 89, 38, 0.2);
+    --positive: #3fbf3f;
+    --negative: #f27b6f;
+    --shadow: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #0f1012;
+  --surface: #17181b;
+  --surface-2: #1f2024;
+  --text: #f2f2f0;
+  --text-2: #c9c8c0;
+  --muted: #a3a29a;
+  --border: #2d2e32;
+  --grid: #26272b;
+  --axis: #45464b;
+  --accent: #86b6ef;
+  --accent-hover: #b7d3f6;
+  --accent-soft: #16253a;
+  --on-accent: #0f1012;
+  --focus: #86b6ef;
+  --series-model: #3987e5;
+  --series-elo: #d95926;
+  --wash-model: rgba(57, 135, 229, 0.2);
+  --wash-elo: rgba(217, 89, 38, 0.2);
+  --positive: #3fbf3f;
+  --negative: #f27b6f;
+  --shadow: none;
+}
+
+@media (min-width: 768px) {
+  :root {
+    --gutter: 32px;
+  }
+}
+
 *,
 *::before,
 *::after {
   box-sizing: border-box;
 }
 
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   margin: 0;
-  font-family: system-ui, sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    var(--font-inter),
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+main {
+  flex: 1;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.5em;
+  color: var(--text);
+}
+
+h1 {
+  font-size: clamp(2rem, 5vw, 3rem);
+  font-weight: 700;
+}
+
+h2 {
+  font-size: clamp(1.4rem, 3vw, 1.75rem);
+  font-weight: 650;
+}
+
+h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+p {
+  margin: 0 0 1em;
+}
+
+a {
+  color: var(--accent);
+  text-underline-offset: 0.2em;
+  text-decoration-thickness: 1px;
+}
+
+a:hover {
+  color: var(--accent-hover);
+  text-decoration-thickness: 2px;
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.9em;
+  background: var(--surface-2);
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 100%;
+  font-variant-numeric: tabular-nums;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.container {
+  width: 100%;
+  max-width: var(--content-width);
+  margin: 0 auto;
+  padding: 0 var(--gutter);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
