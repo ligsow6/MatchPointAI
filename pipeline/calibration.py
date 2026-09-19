@@ -1,5 +1,5 @@
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 from sklearn.isotonic import IsotonicRegression
@@ -7,13 +7,47 @@ from sklearn.linear_model import LogisticRegression
 
 from pipeline.metrics import clipped, score
 
-Transform = Callable[[np.ndarray], np.ndarray]
+IDENTITY = "aucune"
+PLATT = "platt"
+ISOTONIC = "isotonique"
+
+
+@dataclass(frozen=True)
+class Calibration:
+    """Transformation appliquée à la probabilité symétrisée du modèle.
+
+    platt : p' = 1 / (1 + exp(-(a × logit(p) + b)))
+    isotonique : p' = (f(p) + 1 - f(1 - p)) / 2, f interpolation linéaire bornée
+    """
+
+    kind: str
+    coefficient: float = 1.0
+    intercept: float = 0.0
+    knots_x: tuple[float, ...] = field(default_factory=tuple)
+    knots_y: tuple[float, ...] = field(default_factory=tuple)
+
+    def __call__(self, probabilities: np.ndarray) -> np.ndarray:
+        if self.kind == PLATT:
+            scores = self.coefficient * logit(probabilities) + self.intercept
+            return np.asarray(1.0 / (1.0 + np.exp(-scores)))
+        if self.kind == ISOTONIC:
+            direct = np.interp(probabilities, self.knots_x, self.knots_y)
+            mirrored = np.interp(1.0 - probabilities, self.knots_x, self.knots_y)
+            return np.asarray(0.5 * (direct + 1.0 - mirrored))
+        return np.asarray(probabilities, dtype=float)
+
+    def parameters(self) -> dict[str, object]:
+        if self.kind == PLATT:
+            return {"kind": self.kind, "coefficient": self.coefficient, "intercept": self.intercept}
+        if self.kind == ISOTONIC:
+            return {"kind": self.kind, "x": list(self.knots_x), "y": list(self.knots_y)}
+        return {"kind": self.kind}
 
 
 @dataclass(frozen=True)
 class CalibrationChoice:
     name: str
-    transform: Transform
+    transform: Calibration
     cross_fitted_log_loss: dict[str, float]
 
 
@@ -30,46 +64,40 @@ def logit(probabilities: np.ndarray) -> np.ndarray:
     return np.asarray(np.log(bounded / (1.0 - bounded)))
 
 
-def identity(winner_probabilities: np.ndarray) -> Transform:
-    def transform(probabilities: np.ndarray) -> np.ndarray:
-        return probabilities
-
-    return transform
+def identity(winner_probabilities: np.ndarray) -> Calibration:
+    return Calibration(IDENTITY)
 
 
-def platt(winner_probabilities: np.ndarray) -> Transform:
-    """Calibration de Platt : p' = sigmoïde(a * logit(p) + b), ajustée par régression logistique."""
+def platt(winner_probabilities: np.ndarray) -> Calibration:
     probabilities, labels = symmetric_pairs(winner_probabilities)
     regression = LogisticRegression(C=1e6).fit(logit(probabilities).reshape(-1, 1), labels)
+    return Calibration(
+        PLATT,
+        coefficient=float(regression.coef_[0][0]),
+        intercept=float(regression.intercept_[0]),
+    )
 
-    def transform(values: np.ndarray) -> np.ndarray:
-        return np.asarray(regression.predict_proba(logit(values).reshape(-1, 1))[:, 1])
 
-    return transform
-
-
-def isotonic(winner_probabilities: np.ndarray) -> Transform:
+def isotonic(winner_probabilities: np.ndarray) -> Calibration:
     probabilities, labels = symmetric_pairs(winner_probabilities)
     regression = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
     regression.fit(probabilities, labels)
-
-    def transform(values: np.ndarray) -> np.ndarray:
-        return np.asarray(
-            0.5 * (regression.predict(values) + 1.0 - regression.predict(1.0 - values))
-        )
-
-    return transform
+    return Calibration(
+        ISOTONIC,
+        knots_x=tuple(float(value) for value in regression.X_thresholds_),
+        knots_y=tuple(float(value) for value in regression.y_thresholds_),
+    )
 
 
-CALIBRATORS: dict[str, Callable[[np.ndarray], Transform]] = {
-    "aucune": identity,
-    "platt": platt,
-    "isotonique": isotonic,
+CALIBRATORS: dict[str, Callable[[np.ndarray], Calibration]] = {
+    IDENTITY: identity,
+    PLATT: platt,
+    ISOTONIC: isotonic,
 }
 
 
 def cross_fitted_log_loss(
-    fitter: Callable[[np.ndarray], Transform], winner_probabilities: np.ndarray
+    fitter: Callable[[np.ndarray], Calibration], winner_probabilities: np.ndarray
 ) -> float:
     middle = len(winner_probabilities) // 2
     first, second = winner_probabilities[:middle], winner_probabilities[middle:]

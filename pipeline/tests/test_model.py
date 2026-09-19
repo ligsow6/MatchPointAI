@@ -1,8 +1,10 @@
 import numpy as np
 import pandas as pd
 import pytest
+from sklearn.isotonic import IsotonicRegression
+from sklearn.linear_model import LogisticRegression
 
-from pipeline.calibration import choose_calibration, isotonic, platt
+from pipeline.calibration import choose_calibration, isotonic, logit, platt, symmetric_pairs
 from pipeline.data import clean_matches
 from pipeline.elo import attach_elo
 from pipeline.features import attach_player_features
@@ -101,3 +103,25 @@ def test_choose_calibration_rejects_identity_for_overconfident_model() -> None:
     choice = choose_calibration(overconfident_predictions(6000, seed=6))
     assert choice.name != "aucune"
     assert set(choice.cross_fitted_log_loss) == {"aucune", "platt", "isotonique"}
+
+
+def test_explicit_platt_formula_matches_scikit_learn() -> None:
+    fitting = overconfident_predictions(4000, seed=8)
+    calibration = platt(fitting)
+    probabilities, labels = symmetric_pairs(fitting)
+    regression = LogisticRegression(C=1e6).fit(logit(probabilities).reshape(-1, 1), labels)
+    values = np.linspace(0.02, 0.98, 25)
+    expected = regression.predict_proba(logit(values).reshape(-1, 1))[:, 1]
+    np.testing.assert_allclose(calibration(values), expected, atol=1e-12)
+    assert calibration.parameters()["kind"] == "platt"
+
+
+def test_explicit_isotonic_formula_matches_scikit_learn() -> None:
+    fitting = overconfident_predictions(4000, seed=9)
+    calibration = isotonic(fitting)
+    probabilities, labels = symmetric_pairs(fitting)
+    regression = IsotonicRegression(y_min=0.0, y_max=1.0, out_of_bounds="clip")
+    regression.fit(probabilities, labels)
+    values = np.linspace(0.0, 1.0, 41)
+    expected = 0.5 * (regression.predict(values) + 1.0 - regression.predict(1.0 - values))
+    np.testing.assert_allclose(calibration(values), expected, atol=1e-12)
