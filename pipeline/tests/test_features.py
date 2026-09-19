@@ -21,7 +21,7 @@ def enrich(raw: pd.DataFrame) -> pd.DataFrame:
 
 
 def model_inputs(matches: pd.DataFrame) -> pd.DataFrame:
-    return winner_perspective(matches).astype({"surface": str, "tourney_level": str})
+    return winner_perspective(matches)
 
 
 def test_features_ignore_future_matches() -> None:

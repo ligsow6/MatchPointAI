@@ -139,44 +139,73 @@ def pair_key(first: int, second: int) -> tuple[int, int]:
     return (first, second) if first < second else (second, first)
 
 
-def pre_match_player_features(matches: pd.DataFrame) -> pd.DataFrame:
-    """Calcule, pour chaque match, l'état des deux joueurs avant la rencontre."""
-    players: dict[int, PlayerState] = defaultdict(PlayerState)
-    head_to_head: dict[tuple[int, int], dict[int, int]] = defaultdict(lambda: defaultdict(int))
-    columns = [
-        "winner_id",
-        "loser_id",
-        "surface",
-        "match_date",
-        "tourney_id",
-        "outcome",
-        "w_svpt",
-        "w_1stWon",
-        "w_2ndWon",
-        "l_svpt",
-        "l_1stWon",
-        "l_2ndWon",
-    ]
-    rows: list[tuple[float, ...]] = []
-    for row in matches[columns].to_dict("records"):
-        winner_id = int(row["winner_id"])
-        loser_id = int(row["loser_id"])
+HISTORY_COLUMNS = (
+    "winner_id",
+    "loser_id",
+    "surface",
+    "match_date",
+    "tourney_id",
+    "outcome",
+    "w_svpt",
+    "w_1stWon",
+    "w_2ndWon",
+    "l_svpt",
+    "l_1stWon",
+    "l_2ndWon",
+)
+
+
+@dataclass
+class HistoryTracker:
+    players: dict[int, PlayerState] = field(default_factory=lambda: defaultdict(PlayerState))
+    head_to_head: dict[tuple[int, int], dict[int, int]] = field(
+        default_factory=lambda: defaultdict(lambda: defaultdict(int))
+    )
+
+    def wins_against(self, player_id: int, opponent_id: int) -> int:
+        duel = self.head_to_head.get(pair_key(player_id, opponent_id), {})
+        return duel.get(player_id, 0)
+
+    def snapshot(self, row: Mapping[Hashable, object]) -> tuple[float, ...]:
+        winner_id, loser_id = int(str(row["winner_id"])), int(str(row["loser_id"]))
         surface = row["surface"] if isinstance(row["surface"], str) else None
-        match_date = pd.Timestamp(row["match_date"])
+        match_date = pd.Timestamp(str(row["match_date"]))
         tourney_id = str(row["tourney_id"])
-        duel = head_to_head[pair_key(winner_id, loser_id)]
-        winner_state, loser_state = players[winner_id], players[loser_id]
-        rows.append(
-            player_snapshot(winner_state, surface, match_date, tourney_id, duel[winner_id])
-            + player_snapshot(loser_state, surface, match_date, tourney_id, duel[loser_id])
+        winner_state, loser_state = self.players[winner_id], self.players[loser_id]
+        return player_snapshot(
+            winner_state, surface, match_date, tourney_id, self.wins_against(winner_id, loser_id)
+        ) + player_snapshot(
+            loser_state, surface, match_date, tourney_id, self.wins_against(loser_id, winner_id)
         )
+
+    def record(self, row: Mapping[Hashable, object]) -> None:
+        winner_id, loser_id = int(str(row["winner_id"])), int(str(row["loser_id"]))
+        surface = row["surface"] if isinstance(row["surface"], str) else None
+        match_date = pd.Timestamp(str(row["match_date"]))
+        tourney_id = str(row["tourney_id"])
+        winner_state, loser_state = self.players[winner_id], self.players[loser_id]
         if row["outcome"] in (OUTCOME_COMPLETED, OUTCOME_RETIREMENT):
             register_played(winner_state, match_date, tourney_id)
             register_played(loser_state, match_date, tourney_id)
         if row["outcome"] == OUTCOME_COMPLETED:
             register_result(winner_state, True, surface, serve_record(row, "w", "l"))
             register_result(loser_state, False, surface, serve_record(row, "l", "w"))
-            duel[winner_id] += 1
+            self.head_to_head[pair_key(winner_id, loser_id)][winner_id] += 1
+
+
+def replay_history(matches: pd.DataFrame) -> tuple[list[tuple[float, ...]], HistoryTracker]:
+    """Parcourt les matchs dans l'ordre : état de chaque joueur avant le match, puis mise à jour."""
+    tracker = HistoryTracker()
+    rows: list[tuple[float, ...]] = []
+    for row in matches[list(HISTORY_COLUMNS)].to_dict("records"):
+        rows.append(tracker.snapshot(row))
+        tracker.record(row)
+    return rows, tracker
+
+
+def pre_match_player_features(matches: pd.DataFrame) -> pd.DataFrame:
+    """Calcule, pour chaque match, l'état des deux joueurs avant la rencontre."""
+    rows, _ = replay_history(matches)
     names = [f"{name}_w" for name in PLAYER_FEATURES] + [f"{name}_l" for name in PLAYER_FEATURES]
     return pd.DataFrame(np.array(rows, dtype=float), columns=names, index=matches.index)
 
@@ -228,7 +257,15 @@ SIDE_FEATURES = (
     "left_handed",
     "h2h_wins",
 )
-CONTEXT_FEATURES = ("surface", "tourney_level", "round_order", "best_of", "draw_size")
+SURFACE_COLUMNS = {surface: f"surface_{surface.lower()}" for surface in SURFACE_CATEGORIES}
+LEVEL_COLUMNS = {level: f"level_{level.lower()}" for level in LEVEL_CATEGORIES}
+CONTEXT_FEATURES = (
+    *SURFACE_COLUMNS.values(),
+    *LEVEL_COLUMNS.values(),
+    "round_order",
+    "best_of",
+    "draw_size",
+)
 
 
 def feature_names() -> list[str]:
@@ -257,8 +294,10 @@ def oriented_features(
     for name in SIDE_FEATURES:
         frame[f"{name}_a"] = player_a[name]
         frame[f"{name}_b"] = player_b[name]
-    frame["surface"] = pd.Categorical(matches["surface"], categories=SURFACE_CATEGORIES)
-    frame["tourney_level"] = pd.Categorical(matches["tourney_level"], categories=LEVEL_CATEGORIES)
+    for surface, column in SURFACE_COLUMNS.items():
+        frame[column] = (matches["surface"] == surface).astype(float)
+    for level, column in LEVEL_COLUMNS.items():
+        frame[column] = (matches["tourney_level"] == level).astype(float)
     frame["round_order"] = matches["round_order"].astype(float)
     frame["best_of"] = matches["best_of"].astype(float)
     frame["draw_size"] = matches["draw_size"].astype(float)
@@ -285,6 +324,6 @@ def symmetric_training_set(matches: pd.DataFrame) -> tuple[pd.DataFrame, np.ndar
     """Chaque match apparaît deux fois (vainqueur puis perdant en joueur A) : jeu symétrique."""
     features = pd.concat(
         [winner_perspective(matches), loser_perspective(matches)], ignore_index=True
-    )
+    ).astype(float)
     labels = np.concatenate([np.ones(len(matches)), np.zeros(len(matches))])
     return features, labels

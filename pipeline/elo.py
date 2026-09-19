@@ -82,12 +82,12 @@ ELO_COLUMNS = (
 )
 
 
-def pre_match_ratings(
+def rate_history(
     winners: Iterable[int],
     losers: Iterable[int],
     surfaces: Iterable[str | None],
     updates: Iterable[bool],
-) -> np.ndarray:
+) -> tuple[np.ndarray, EloTracker]:
     tracker = EloTracker()
     rows: list[tuple[float, float, int, int, float, float, int, int]] = []
     for winner_id, loser_id, surface, should_update in zip(
@@ -114,18 +114,27 @@ def pre_match_ratings(
         )
         if should_update:
             tracker.record(winner_id, loser_id, surface)
-    return np.array(rows, dtype=float)
+    return np.array(rows, dtype=float), tracker
 
 
-def attach_elo(matches: pd.DataFrame) -> pd.DataFrame:
-    """Ajoute les Elo global et par surface connus avant chaque match (ordre chronologique)."""
+def rate_matches(matches: pd.DataFrame) -> tuple[np.ndarray, EloTracker]:
     surfaces = [surface if isinstance(surface, str) else None for surface in matches["surface"]]
-    values = pre_match_ratings(
+    return rate_history(
         matches["winner_id"].tolist(),
         matches["loser_id"].tolist(),
         surfaces,
         completed_mask(matches).tolist(),
     )
+
+
+def final_ratings(matches: pd.DataFrame) -> EloTracker:
+    """Elo global et par surface de chaque joueur après le dernier match connu."""
+    return rate_matches(matches)[1]
+
+
+def attach_elo(matches: pd.DataFrame) -> pd.DataFrame:
+    """Ajoute les Elo global et par surface connus avant chaque match (ordre chronologique)."""
+    values, _ = rate_matches(matches)
     enriched = matches.copy()
     for index, column in enumerate(ELO_COLUMNS):
         enriched[column] = values[:, index]
