@@ -75,6 +75,8 @@ describe("players.json", () => {
   it("trouve un joueur sans accents ni majuscules", () => {
     const index = buildSearchIndex(players);
     expect(searchPlayers(index, "federer")[0]?.name).toBe("Roger Federer");
+    expect(searchPlayers(index, "fed")[0]?.name).toBe("Roger Federer");
+    expect(searchPlayers(index, "rafa")[0]?.name).toBe("Rafael Nadal");
     expect(searchPlayers(index, "nov djok")[0]?.name).toBe("Novak Djokovic");
     expect(searchPlayers(index, "")).toEqual([]);
   });

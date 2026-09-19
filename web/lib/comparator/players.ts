@@ -112,22 +112,20 @@ export function searchPlayers(index: SearchIndex, query: string, limit = 8): Pla
   }
   const parts = needle.split(" ");
   return index
-    .map((entry) => {
-      const matchesAll = parts.every((part) =>
-        entry.tokens.some((token) => token.startsWith(part)),
-      );
-      if (!matchesAll) {
-        return null;
-      }
-      const rank = entry.key.startsWith(needle)
-        ? 0
-        : entry.tokens.some((token) => token.startsWith(needle))
-          ? 1
-          : 2;
-      return { player: entry.player, rank };
-    })
-    .filter((item): item is { player: PlayerRecord; rank: number } => item !== null)
-    .sort((left, right) => left.rank - right.rank || right.player.elo - left.player.elo)
+    .filter((entry) => parts.every((part) => entry.tokens.some((token) => token.startsWith(part))))
+    .map((entry) => ({
+      player: entry.player,
+      rank:
+        entry.key.startsWith(needle) || entry.tokens.some((token) => token.startsWith(needle))
+          ? 0
+          : 1,
+    }))
+    .sort(
+      (left, right) =>
+        left.rank - right.rank ||
+        right.player.played - left.player.played ||
+        right.player.elo - left.player.elo,
+    )
     .slice(0, limit)
     .map((item) => item.player);
 }
