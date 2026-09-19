@@ -1,0 +1,151 @@
+.toc {
+  margin-top: 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  max-width: 46rem;
+}
+
+.toc ol {
+  margin: 0;
+  padding-left: 1.25rem;
+  columns: 2 12rem;
+  column-gap: 2rem;
+}
+
+.toc li {
+  padding: 0.125rem 0;
+}
+
+.toc a {
+  display: inline-block;
+  padding: 0.25rem 0;
+}
+
+.prose {
+  max-width: 50rem;
+}
+
+.prose ul,
+.prose ol {
+  padding-left: 1.25rem;
+  margin: 0 0 1em;
+}
+
+.prose li {
+  margin-bottom: 0.5rem;
+}
+
+.prose h3 {
+  margin-top: 2rem;
+}
+
+.timeline {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 1.5rem 0 !important;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.timeline li {
+  flex-basis: 10rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+  padding: 0.875rem 1rem;
+  margin: 0 !important;
+  border-radius: var(--radius-small);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-top: 4px solid var(--axis);
+}
+
+.train {
+  border-top-color: var(--axis) !important;
+}
+
+.validation {
+  border-top-color: var(--series-elo) !important;
+}
+
+.test {
+  border-top-color: var(--series-model) !important;
+}
+
+.periodName {
+  font-weight: 650;
+}
+
+.periodDates {
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+.periodCount {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.formulas {
+  display: grid;
+  gap: 0.75rem;
+  margin: 1.25rem 0;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.formulas dt {
+  font-weight: 650;
+}
+
+.formulas dd {
+  margin: 0.125rem 0 0;
+  color: var(--text-2);
+}
+
+.featureGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+  gap: 0.75rem 1.5rem;
+  padding: 0 !important;
+  list-style: none;
+}
+
+.featureGrid li {
+  padding: 0.875rem 1rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  margin: 0 !important;
+  color: var(--text-2);
+}
+
+.featureGrid strong {
+  color: var(--text);
+}
+
+.limits li {
+  margin-bottom: 0.875rem !important;
+}
+
+.code {
+  margin: 0;
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  font-size: 0.875rem;
+  line-height: 1.7;
+}
+
+.code code {
+  background: none;
+  padding: 0;
+}
