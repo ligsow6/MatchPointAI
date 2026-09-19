@@ -131,6 +131,12 @@ export default function PerformancePage() {
     (segment) => segment.model.accuracy < segment.elo.accuracy,
   );
   const beatsYears = performance.yearly.filter((year) => year.model.logLoss < year.elo.logLoss);
+  const seasonSizes = performance.yearly
+    .slice(0, -1)
+    .map((year) => year.matches)
+    .sort((left, right) => left - right);
+  const typicalSeason =
+    Math.round((seasonSizes[Math.floor(seasonSizes.length / 2)] ?? 0) / 100) * 100;
   const firstYear = performance.yearly[0]?.year;
   const lastYear = performance.yearly.at(-1)?.year;
   const legend = (
@@ -269,7 +275,7 @@ export default function PerformancePage() {
       >
         <ChartFigure
           title="Performance par saison"
-          description={`Comparaison annuelle du Elo et de LightGBM, de ${firstYear} à ${lastYear}. Chaque saison compte entre 2 000 et 3 000 matchs : un écart d'un point d'exactitude d'une année sur l'autre reste dans le bruit statistique.`}
+          description={`Comparaison annuelle du Elo et de LightGBM, de ${firstYear} à ${lastYear}. Une saison complète compte environ ${formatInteger(typicalSeason)} matchs, la saison ${lastYear} s'arrête le ${formatDate(overview.dataset.lastDate)} : un écart d'un point d'exactitude d'une année sur l'autre reste dans le bruit statistique.`}
           legend={legend}
           table={<YearlyTable years={performance.yearly} />}
         >
