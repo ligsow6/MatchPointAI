@@ -180,4 +180,4 @@ docs/                capture du replay
 
 - **`ci.yml`** (à chaque push et pull request) : ruff, mypy et pytest pour le pipeline ; ESLint, TypeScript, Prettier, Vitest et build pour le site ; audit Lighthouse de toutes les pages en mobile et en ordinateur, qui échoue sous 95 en accessibilité.
 - **`refresh-data.yml`** (chaque lundi, et à chaque modification du pipeline) : télécharge les dernières données, relance tout le pipeline, vérifie le nouveau modèle dans `onnxruntime-web` (Vitest), puis commit les JSON et le modèle (`chore: met à jour les données ATP`) uniquement s'ils ont changé. Ce commit déclenche un nouveau déploiement.
-- **Vercel** : le fichier [`vercel.json`](vercel.json) décrit la construction du site statique ; chaque push sur `main` est déployé automatiquement.
+- **Vercel** : le projet Vercel a pour *Root Directory* `web` ; le fichier [`web/vercel.json`](web/vercel.json) y décrit la construction du site statique (`npm ci`, `npm run build`, dossier `out`). Chaque push sur `main` est déployé automatiquement.
