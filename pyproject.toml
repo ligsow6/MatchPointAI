@@ -12,6 +12,9 @@ dependencies = [
   "pandas>=2.2",
   "scikit-learn>=1.6",
   "lightgbm>=4.5",
+  "onnx>=1.17",
+  "onnxmltools>=1.13",
+  "onnxruntime>=1.20",
 ]
 
 [project.optional-dependencies]
@@ -43,7 +46,18 @@ strict = true
 files = ["pipeline"]
 
 [[tool.mypy.overrides]]
-module = ["lightgbm", "lightgbm.*", "sklearn", "sklearn.*"]
+module = [
+  "lightgbm",
+  "lightgbm.*",
+  "sklearn",
+  "sklearn.*",
+  "onnx",
+  "onnx.*",
+  "onnxmltools",
+  "onnxmltools.*",
+  "onnxruntime",
+  "onnxruntime.*",
+]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]
