@@ -59,4 +59,39 @@ describe("modèle ONNX exécuté par onnxruntime-web", () => {
       expect(Math.abs(probability - sanity.probability)).toBeLessThanOrEqual(1e-6);
     }
   });
+
+  it("fonctionne pour n'importe quelle paire, affrontée ou non", async () => {
+    const runner = await nodeRunner();
+    const roster = [...players.values()];
+    let seed = 20260919;
+    const next = () => {
+      seed = (seed * 1103515245 + 12345) % 2147483648;
+      return seed / 2147483648;
+    };
+    let neverMet = 0;
+    for (let draw = 0; draw < 200; draw += 1) {
+      const playerA = roster[Math.floor(next() * roster.length)];
+      const playerB = roster[Math.floor(next() * roster.length)];
+      const preset = metadata.presets[draw % metadata.presets.length];
+      if (!playerA || !playerB || !preset || playerA.id === playerB.id) {
+        continue;
+      }
+      const surface = (["Hard", "Clay", "Grass"] as const)[draw % 3] ?? "Hard";
+      const context = contextFor(preset, surface, metadata.neutralRestDays);
+      const duel = headToHeadBetween(pairs, playerA.id, playerB.id);
+      neverMet += duel[0] + duel[1] === 0 ? 1 : 0;
+      const forward = await predictMatch(runner, metadata, playerA, playerB, context, duel);
+      const backward = await predictMatch(runner, metadata, playerB, playerA, context, [
+        duel[1],
+        duel[0],
+      ]);
+      expect(Number.isFinite(forward)).toBe(true);
+      expect(forward).toBeGreaterThan(0);
+      expect(forward).toBeLessThan(1);
+      if (metadata.calibration.kind === "aucune") {
+        expect(Math.abs(forward + backward - 1)).toBeLessThanOrEqual(1e-6);
+      }
+    }
+    expect(neverMet).toBeGreaterThan(100);
+  });
 });
