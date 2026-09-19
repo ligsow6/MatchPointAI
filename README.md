@@ -1,6 +1,6 @@
 # MatchPoint
 
-Prédiction de matchs de tennis ATP : un modèle LightGBM évalué sans filtre face à une baseline Elo par surface, et des finales mythiques rejouées point par point.
+Prédiction de matchs de tennis ATP : un comparateur « n'importe qui contre n'importe qui » calculé dans le navigateur, un modèle LightGBM évalué sans filtre face à une baseline Elo par surface, et des finales mythiques rejouées point par point.
 
 **Site en ligne : lien Vercel à renseigner après le premier déploiement (voir « Intégration et déploiement continus »).**
 
@@ -8,7 +8,7 @@ Prédiction de matchs de tennis ATP : un modèle LightGBM évalué sans filtre f
 
 ## Ce que fait le projet
 
-Avant chaque match du circuit ATP, MatchPoint estime la probabilité de victoire de chaque joueur. Il compare ces prévisions à celles d'un classement Elo, la référence du domaine, sur des matchs que les modèles n'ont jamais vus, et affiche les deux résultats côte à côte. Le site permet aussi de revivre cinq finales de Grand Chelem point par point, en regardant la probabilité de victoire basculer à chaque échange.
+Choisissez deux joueurs de l'ère Open, actuels ou historiques, qu'ils se soient déjà affrontés ou non : MatchPoint calcule leurs chances de victoire directement dans votre navigateur. Le modèle qui fait ce calcul est évalué honnêtement face à un classement Elo, la référence du domaine, sur des matchs qu'il n'a jamais vus, et les deux résultats sont affichés côte à côte. Le site permet aussi de revivre cinq finales de Grand Chelem point par point, en regardant la probabilité de victoire basculer à chaque échange.
 
 ## Méthodologie
 
@@ -64,7 +64,7 @@ Les paramètres viennent de la littérature (FiveThirtyEight, Kovalchik 2016) et
 
 **2. Elo recalibré.** Même classement, mais corrigé de son excès de confiance par une régression logistique ajustée sur la période d'entraînement. Il sert à séparer ce que le modèle avancé apporte en information de ce qu'il apporte en simple calibration.
 
-**3. LightGBM.** Gradient boosting sur 50 variables connues avant le match :
+**3. LightGBM.** Gradient boosting sur 57 variables connues avant le match :
 
 | Famille | Variables |
 | --- | --- |
@@ -78,6 +78,17 @@ Les paramètres viennent de la littérature (FiveThirtyEight, Kovalchik 2016) et
 | Contexte | surface, niveau du tournoi, tour, format 3 ou 5 sets, taille du tableau |
 
 Chaque match est présenté deux fois à l'entraînement (du point de vue de chaque joueur) et la prévision moyenne les deux orientations, ce qui garantit `P(A bat B) + P(B bat A) = 1`. La recherche d'hyperparamètres est aléatoire (30 configurations) avec arrêt anticipé sur 2024 ; aucune validation croisée aléatoire n'est utilisée, car elle mélangerait passé et futur. La calibration (aucune, Platt ou isotonique) est choisie par validation croisée sur les deux moitiés de 2024 : la sortie brute, déjà bien calibrée, l'emporte.
+
+### Comparateur : prédiction à la demande, sans serveur
+
+Un serveur Python ferait ce calcul plus simplement, mais il coûterait de l'argent ou s'endormirait après quelques minutes d'inactivité ; précalculer toutes les paires de joueurs grandirait au carré. Le calcul est donc fait dans le navigateur :
+
+1. **Modèle** : le LightGBM évalué ci-dessous est converti avec `onnxmltools.convert_lightgbm`, puis passé en double précision ([`pipeline/onnx_export.py`](pipeline/onnx_export.py)) et publié dans `web/public/model/matchpoint.onnx`. La conversion standard compare les valeurs en simple précision alors que LightGBM travaille en double : sur le modèle publié, elle s'écartait de plusieurs points de probabilité. L'export est refusé si l'écart entre ONNX Runtime et LightGBM dépasse **1e-6** sur les matchs de la période de test.
+2. **Joueurs** : [`pipeline/export_players.py`](pipeline/export_players.py) écrit `web/public/data/players.json`, une ligne par joueur ayant au moins 5 matchs complets dans la base : identité, main, taille, date de naissance, Elo global et par surface, forme sur 10 et 20 matchs (toutes surfaces et par surface), service et retour sur fenêtre glissante, classement et âge au dernier match, date du dernier match. `web/public/data/h2h.json` contient les face-à-face des paires qui se sont déjà rencontrées.
+3. **Variables** : [`web/lib/features.ts`](web/lib/features.ts) reprend une à une les formules de [`pipeline/features.py`](pipeline/features.py). Le match imaginé est un premier tour du type de tournoi choisi, chaque joueur étant pris tel qu'il était à son dernier match connu et arrivant reposé (7 jours).
+4. **Calcul** : `onnxruntime-web` est chargé à la demande, au premier calcul sur la page `/comparateur` (le reste du site n'en paie pas le coût), puis la prévision est symétrisée comme pendant l'évaluation. Aucune requête réseau n'a lieu après ce premier chargement.
+
+Trois tests empêchent une divergence silencieuse : parité ONNX/LightGBM à 1e-6 (pytest et à chaque export), fixture partagée [`fixtures/comparator_features.json`](fixtures/comparator_features.json) vérifiant que Python et TypeScript produisent le même vecteur de variables, et cas de contrôle sur de vrais joueurs recalculés de bout en bout par `onnxruntime-web` (Vitest), à 1e-6 près. Un avertissement « estimation peu fiable — historique insuffisant ou joueur inactif » s'affiche si un joueur compte moins de 15 matchs dans la base ou n'a pas joué depuis plus d'un an. Aucune explication détaillée de type SHAP n'est affichée : le moteur du navigateur ne la calcule pas, et une approximation serait moins honnête que son absence.
 
 ### Replay point par point
 
@@ -114,13 +125,14 @@ Période de test : 4 140 matchs, du 6 janvier 2025 au 7 juin 2026.
 - **Exclusion des abandons** : on ne sait pas avant un match qu'il finira sur abandon ; les retirer de l'évaluation rend les scores légèrement optimistes, pour tous les modèles.
 - **Dates approximatives** : la base ne donne que la date de début du tournoi ; la date de chaque match est estimée selon le tour.
 - **Catégories fusionnées** : ATP 250 et 500 ne sont pas distingués, la moquette est rattachée au dur.
+- **Comparateur entre époques** : le modèle n'a appris que sur des matchs entre contemporains ; opposer un joueur de 1980 à un joueur de 2026 est une extrapolation, et les deux sont pris à leur dernier match connu, pas à leur meilleur niveau.
 - **Replay sans dynamique** : la chaîne de Markov suppose des points indépendants et des forces au service constantes ; la courbe suit le tableau d'affichage, pas l'élan ou la fatigue du jour.
 - **Données figées** : tant que le dépôt original reste indisponible, les résultats s'arrêtent au 7 juin 2026.
 
 ## Stack technique
 
-- **Pipeline** : Python 3.12+, pandas, NumPy, scikit-learn, LightGBM ; ruff, mypy en mode strict, pytest (110 tests).
-- **Site** : Next.js 16 en export statique (React 19, TypeScript strict), Recharts, CSS Modules, police Inter ; thèmes clair et sombre.
+- **Pipeline** : Python 3.12+, pandas, NumPy, scikit-learn, LightGBM, onnxmltools et ONNX Runtime ; ruff, mypy en mode strict, pytest.
+- **Site** : Next.js 16 en export statique (React 19, TypeScript strict), onnxruntime-web, Recharts, CSS Modules, police Inter ; thèmes clair et sombre ; tests Vitest.
 - **Qualité** : ESLint, Prettier, audit Lighthouse automatisé (accessibilité ≥ 95 exigée, 100 obtenu sur les quatre pages, mobile et ordinateur).
 - **Hébergement** : Vercel (fichiers statiques, aucun serveur à réveiller) et GitHub Actions pour l'intégration continue et le rafraîchissement des données.
 
@@ -140,26 +152,30 @@ python -m pipeline
 
 cd web
 npm ci
+npm test
 npm run dev
 ```
 
-`python -m pipeline` télécharge les données (environ 170 Mo, mises en cache dans `data/raw`), recalcule Elo, variables, modèles et backtests (environ 5 minutes), puis régénère les fichiers JSON de `web/public/data`. Le site fonctionne aussi sans cette étape, avec les données déjà versionnées. `npm run build` produit le site statique dans `web/out`, que `npm run start` sert localement.
+`python -m pipeline` télécharge les données (environ 170 Mo, mises en cache dans `data/raw`), recalcule Elo, variables, modèles et backtests (environ 5 minutes), puis régénère les fichiers JSON de `web/public/data` et le modèle ONNX de `web/public/model`. `python -m pipeline.fixture` recalcule les vecteurs attendus de la fixture partagée si les formules des variables changent. Le site fonctionne aussi sans cette étape, avec les données déjà versionnées. `npm run build` produit le site statique dans `web/out`, que `npm run start` sert localement.
 
 ## Structure du dépôt
 
 ```
-pipeline/            ingestion, nettoyage, Elo, variables, modèle, backtest, replay, export JSON
-  tests/             tests unitaires (fuite temporelle, formules, Markov, exports)
+pipeline/            ingestion, nettoyage, Elo, variables, modèle, backtest, replay, exports JSON et ONNX
+  tests/             tests unitaires (fuite temporelle, formules, Markov, parité ONNX, exports)
+fixtures/            fixture partagée entre les tests Python et TypeScript
 web/                 site Next.js
-  app/               pages : accueil, performance, rejouer, méthodologie
-  components/        graphiques, replay, mise en page
+  app/               pages : accueil, comparateur, performance, rejouer, méthodologie
+  components/        comparateur, graphiques, replay, mise en page
+  lib/               variables, calibration et prédiction côté navigateur (et leurs tests)
   public/data/       fichiers JSON produits par le pipeline
+  public/model/      modèle ONNX et ses métadonnées
 .github/workflows/   ci.yml (qualité et accessibilité), refresh-data.yml (données)
 docs/                capture du replay
 ```
 
 ## Intégration et déploiement continus
 
-- **`ci.yml`** (à chaque push et pull request) : ruff, mypy et pytest pour le pipeline ; ESLint, TypeScript, Prettier et build pour le site ; audit Lighthouse de toutes les pages en mobile et en ordinateur, qui échoue sous 95 en accessibilité.
-- **`refresh-data.yml`** (chaque lundi, et à chaque modification du pipeline) : télécharge les dernières données, relance tout le pipeline et commit les JSON (`chore: met à jour les données ATP`) uniquement s'ils ont changé. Ce commit déclenche un nouveau déploiement.
+- **`ci.yml`** (à chaque push et pull request) : ruff, mypy et pytest pour le pipeline ; ESLint, TypeScript, Prettier, Vitest et build pour le site ; audit Lighthouse de toutes les pages en mobile et en ordinateur, qui échoue sous 95 en accessibilité.
+- **`refresh-data.yml`** (chaque lundi, et à chaque modification du pipeline) : télécharge les dernières données, relance tout le pipeline, vérifie le nouveau modèle dans `onnxruntime-web` (Vitest), puis commit les JSON et le modèle (`chore: met à jour les données ATP`) uniquement s'ils ont changé. Ce commit déclenche un nouveau déploiement.
 - **Vercel** : le fichier [`vercel.json`](vercel.json) décrit la construction du site statique ; chaque push sur `main` est déployé automatiquement.
