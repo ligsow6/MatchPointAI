@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Callout } from "@/components/ui/Section";
 import { StatGrid, StatTile } from "@/components/ui/StatTile";
-import { loadOverview, loadPerformance, loadReplayIndex } from "@/lib/data";
+import { loadComparatorSummary, loadOverview, loadPerformance, loadReplayIndex } from "@/lib/data";
 import {
   formatDate,
   formatDecimal,
@@ -16,6 +16,7 @@ export default function HomePage() {
   const overview = loadOverview();
   const performance = loadPerformance();
   const replays = loadReplayIndex();
+  const comparator = loadComparatorSummary();
   const model = modelReport(performance, "model");
   const elo = modelReport(performance, "elo");
   const logLoss = differenceFor(comparisonWith(performance, "elo"), "logLoss");
@@ -28,21 +29,20 @@ export default function HomePage() {
     <div className="container">
       <section className={styles.hero} aria-labelledby="accueil-titre">
         <p className={styles.eyebrow}>Tennis ATP · Machine learning · Backtest honnête</p>
-        <h1 id="accueil-titre">
-          Prédire un match de tennis, et mesurer honnêtement l&apos;erreur.
-        </h1>
+        <h1 id="accueil-titre">Qui gagnerait ? Posez la question à un modèle honnête.</h1>
         <p className={styles.lead}>
-          MatchPoint estime la probabilité de victoire de chaque joueur avant un match ATP. Un
-          modèle de gradient boosting, nourri par {formatInteger(overview.dataset.totalMatches)}{" "}
-          matchs depuis 1968, est confronté sans filtre à la référence du domaine : un classement
-          Elo par surface.
+          Choisissez deux joueurs, d&apos;hier ou d&apos;aujourd&apos;hui : MatchPoint estime leurs
+          chances de victoire avec un modèle de gradient boosting nourri par{" "}
+          {formatInteger(overview.dataset.totalMatches)} matchs depuis 1968, exécuté directement
+          dans votre navigateur. Ce modèle est confronté sans filtre à la référence du domaine, un
+          classement Elo par surface.
         </p>
         <div className={styles.actions}>
-          <Link href="/performance" className={styles.primary}>
-            Voir les résultats
+          <Link href="/comparateur" className={styles.primary}>
+            Comparer deux joueurs
           </Link>
-          <Link href="/rejouer" className={styles.secondary}>
-            Rejouer une finale
+          <Link href="/performance" className={styles.secondary}>
+            Voir les résultats
           </Link>
         </div>
       </section>
@@ -80,6 +80,21 @@ export default function HomePage() {
             ).getUTCFullYear()}`}
           />
         </StatGrid>
+      </section>
+
+      <section aria-labelledby="comparateur-titre" className={styles.block}>
+        <h2 id="comparateur-titre">Un comparateur sans serveur</h2>
+        <p className={styles.blockLead}>
+          Le modèle évalué ci-dessus est exporté au format ONNX et tourne dans votre navigateur :
+          aucun serveur à réveiller, aucune donnée envoyée. Il couvre les{" "}
+          {formatInteger(comparator.players)} joueurs de l&apos;ère Open ayant disputé au moins{" "}
+          {comparator.minMatches} matchs sur le circuit principal, qu&apos;ils se soient affrontés
+          ou non, et signale clairement quand l&apos;estimation repose sur trop peu de matchs ou sur
+          un joueur inactif.
+        </p>
+        <Link href="/comparateur" className={styles.secondary}>
+          Ouvrir le comparateur
+        </Link>
       </section>
 
       <section aria-labelledby="demarche-titre" className={styles.block}>

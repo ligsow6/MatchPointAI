@@ -3,7 +3,7 @@ import { ChartFigure } from "@/components/charts/ChartFigure";
 import { ImportanceChart } from "@/components/charts/ImportanceChart";
 import { Callout, PageIntro, Section } from "@/components/ui/Section";
 import tableStyles from "@/components/ui/DataTable.module.css";
-import { loadModelDetails, loadOverview, loadPerformance } from "@/lib/data";
+import { loadComparatorSummary, loadModelDetails, loadOverview, loadPerformance } from "@/lib/data";
 import { formatDate, formatDecimal, formatInteger, formatPercent } from "@/lib/format";
 import { modelReport } from "@/lib/models";
 import { REPOSITORY_URL } from "@/lib/site";
@@ -71,6 +71,7 @@ function segmentByValue(segments: Segment[], dimension: Segment["dimension"], va
 export default function MethodologyPage() {
   const overview = loadOverview();
   const details = loadModelDetails();
+  const comparator = loadComparatorSummary();
   const performance = loadPerformance();
   const model = modelReport(performance, "model");
   const elo = modelReport(performance, "elo");
@@ -113,6 +114,9 @@ export default function MethodologyPage() {
           </li>
           <li>
             <a href="#modele">Modèle LightGBM</a>
+          </li>
+          <li>
+            <a href="#comparateur">Comparateur de joueurs</a>
           </li>
           <li>
             <a href="#replay">Replay point par point</a>
@@ -355,6 +359,70 @@ export default function MethodologyPage() {
               0,
             )}
             .
+          </p>
+        </Section>
+
+        <Section id="comparateur" title="Comparateur de joueurs">
+          <p>
+            Le comparateur utilise exactement le modèle évalué plus haut, sans aucun serveur. À
+            chaque rafraîchissement, le pipeline exporte trois fichiers :
+          </p>
+          <ul>
+            <li>
+              <strong>le modèle</strong>, converti au format ONNX avec <code>onnxmltools</code> puis
+              passé en double précision, et exécuté dans le navigateur par{" "}
+              <code>onnxruntime-web</code> ;
+            </li>
+            <li>
+              <strong>l&apos;état de chaque joueur</strong> à l&apos;issue de son dernier match :
+              Elo global et par surface, forme, service et retour, classement, âge (
+              {formatInteger(comparator.players)} joueurs ayant au moins {comparator.minMatches}{" "}
+              matchs dans la base) ;
+            </li>
+            <li>
+              <strong>les face-à-face</strong> des paires qui se sont déjà rencontrées ; pour les
+              autres, le bilan vaut simplement 0-0.
+            </li>
+          </ul>
+          <p>
+            Le navigateur combine les deux joueurs choisis pour fabriquer les{" "}
+            {formatInteger(comparator.metadata.features.length)} variables, dans les deux sens (A
+            contre B, puis B contre A), et fait tourner le modèle localement. Le match imaginé est
+            un premier tour du type de tournoi choisi, les deux joueurs arrivant reposés (
+            {comparator.metadata.neutralRestDays} jours depuis leur dernier match), chacun tel
+            qu&apos;il était à son dernier match connu.
+          </p>
+          <h3>Trois garde-fous contre une divergence silencieuse</h3>
+          <ul>
+            <li>
+              La conversion ONNX standard compare les valeurs en simple précision : sur le modèle
+              publié, elle s&apos;écarte de LightGBM jusqu&apos;à{" "}
+              {formatDecimal(comparator.metadata.parity.float32MaxDifference * 100, 1)} points de
+              probabilité. Le modèle est donc passé en double précision, et son export est refusé si
+              l&apos;écart dépasse 1e-6 : sur les {formatInteger(comparator.metadata.parity.rows)}{" "}
+              lignes de la période de test, l&apos;écart maximal est de{" "}
+              {comparator.metadata.parity.maxDifference.toExponential(1).replace(".", ",")}.
+            </li>
+            <li>
+              Les variables sont recalculées en TypeScript à partir des mêmes formules que le
+              pipeline Python ; une fixture commune vérifie que les deux implémentations produisent
+              le même vecteur, valeurs manquantes comprises.
+            </li>
+            <li>
+              Des cas de contrôle sur de vrais joueurs sont prédits par Python à l&apos;export, puis
+              recalculés de bout en bout par <code>onnxruntime-web</code> dans les tests : ils
+              doivent coïncider à 1e-6 près.
+            </li>
+          </ul>
+          <h3>Ce que le comparateur ne dit pas</h3>
+          <p>
+            Un avertissement s&apos;affiche quand un joueur compte moins de{" "}
+            {comparator.reliableMatches} matchs dans la base ou n&apos;a pas joué depuis plus
+            d&apos;un an : l&apos;estimation repose alors sur un historique trop mince ou périmé.
+            Les duels entre époques sont des extrapolations, le modèle n&apos;ayant appris que sur
+            des joueurs contemporains. Enfin, aucune explication détaillée de la prévision (de type
+            SHAP) n&apos;est affichée : le moteur du navigateur ne la calcule pas, et une
+            approximation serait moins honnête que son absence.
           </p>
         </Section>
 
