@@ -345,10 +345,16 @@ export default function MethodologyPage() {
             />
           </ChartFigure>
           <p>
-            Sans surprise, le Elo reste le socle de la décision. Les autres familles corrigent ses
-            angles morts : un joueur qui revient de blessure avec un classement protégé, un serveur
-            dominant sur surface rapide, un joueur très jeune dont le Elo n&apos;a pas encore
-            rattrapé le niveau.
+            Le Elo reste le socle de la décision. Les autres familles apportent des signaux
+            qu&apos;il ne voit pas directement, comme la qualité au service et au retour,
+            l&apos;expérience ou le classement officiel, pour un poids cumulé de{" "}
+            {formatPercent(
+              details.importance.families
+                .filter((family) => family.key !== "elo")
+                .reduce((total, family) => total + family.share, 0),
+              0,
+            )}
+            .
           </p>
         </Section>
 
