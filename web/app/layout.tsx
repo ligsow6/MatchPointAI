@@ -6,21 +6,20 @@ import { SiteHeader } from "@/components/layout/SiteHeader";
 import { THEME_BOOTSTRAP } from "@/components/layout/ThemeToggle";
 import { loadOverview } from "@/lib/data";
 import { formatDate } from "@/lib/format";
-import { SITE_DESCRIPTION, SITE_NAME } from "@/lib/site";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL, socialMetadata } from "@/lib/site";
 import "./globals.css";
 import styles from "./layout.module.css";
 
 const inter = Inter({ subsets: ["latin"], display: "swap", variable: "--font-inter" });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: `${SITE_NAME} · Prédiction de matchs ATP`, template: `%s · ${SITE_NAME}` },
-  description: SITE_DESCRIPTION,
-  openGraph: {
-    title: SITE_NAME,
+  ...socialMetadata({
+    title: `${SITE_NAME} · Prédiction de matchs ATP`,
     description: SITE_DESCRIPTION,
-    type: "website",
-    locale: "fr_FR",
-  },
+    path: "/",
+  }),
 };
 
 export const viewport: Viewport = {

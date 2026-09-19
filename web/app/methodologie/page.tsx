@@ -6,14 +6,18 @@ import tableStyles from "@/components/ui/DataTable.module.css";
 import { loadComparatorSummary, loadModelDetails, loadOverview, loadPerformance } from "@/lib/data";
 import { formatDate, formatDecimal, formatInteger, formatPercent } from "@/lib/format";
 import { modelReport } from "@/lib/models";
-import { REPOSITORY_URL } from "@/lib/site";
+import { REPOSITORY_URL, socialMetadata } from "@/lib/site";
 import type { Period, Segment } from "@/lib/types";
 import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   title: "Méthodologie",
-  description:
-    "Données, découpage temporel, baseline Elo, modèle LightGBM, replay par chaîne de Markov et limites connues.",
+  ...socialMetadata({
+    title: "Méthodologie · MatchPoint",
+    description:
+      "Données, découpage temporel, baseline Elo, modèle LightGBM, comparateur dans le navigateur, replay par chaîne de Markov et limites connues.",
+    path: "/methodologie",
+  }),
 };
 
 const HYPERPARAMETER_LABELS: Record<string, string> = {

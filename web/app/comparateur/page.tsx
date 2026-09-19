@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
+import { socialMetadata } from "@/lib/site";
 import Link from "next/link";
 import { Comparator } from "@/components/comparator/Comparator";
 import { Callout, PageIntro } from "@/components/ui/Section";
 
 export const metadata: Metadata = {
   title: "Comparateur de joueurs",
-  description:
-    "Choisissez deux joueurs ATP, actuels ou historiques, et obtenez une probabilité de victoire calculée dans votre navigateur.",
+  ...socialMetadata({
+    title: "Comparateur de joueurs · MatchPoint",
+    description:
+      "Choisissez deux joueurs ATP, actuels ou historiques, et obtenez une probabilité de victoire calculée dans votre navigateur.",
+    path: "/comparateur",
+  }),
 };
 
 export default function ComparatorPage() {

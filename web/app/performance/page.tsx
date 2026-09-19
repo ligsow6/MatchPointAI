@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { socialMetadata } from "@/lib/site";
 import Link from "next/link";
 import { CalibrationChart } from "@/components/charts/CalibrationChart";
 import { ChartFigure, ChartLegend } from "@/components/charts/ChartFigure";
@@ -23,7 +24,11 @@ import styles from "./page.module.css";
 
 export const metadata: Metadata = {
   title: "Performance du modèle",
-  description: "Backtest temporel du modèle LightGBM face à la baseline Elo par surface.",
+  ...socialMetadata({
+    title: "Performance du modèle · MatchPoint",
+    description: "Backtest temporel du modèle LightGBM face à la baseline Elo par surface.",
+    path: "/performance",
+  }),
 };
 
 function CalibrationTable({ reports }: { reports: ModelReport[] }) {
