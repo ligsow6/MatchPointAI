@@ -1,0 +1,25 @@
+.footer {
+  margin-top: 4rem;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-2);
+  font-size: 0.875rem;
+}
+
+.inner {
+  padding-top: 2rem;
+  padding-bottom: 2rem;
+  display: grid;
+  gap: 0.25rem;
+}
+
+.inner p {
+  margin: 0;
+  max-width: 60rem;
+}
+
+.brand {
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 0.25rem !important;
+}

@@ -1,0 +1,140 @@
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid var(--border);
+}
+
+.inner {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas:
+    "brand toggle"
+    "nav nav";
+  align-items: center;
+  column-gap: 1rem;
+  padding-top: 0.625rem;
+  padding-bottom: 0.25rem;
+}
+
+.brand {
+  grid-area: brand;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: fit-content;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 1.125rem;
+  letter-spacing: -0.02em;
+  text-decoration: none;
+}
+
+.brand:hover {
+  color: var(--text);
+}
+
+.nav {
+  grid-area: nav;
+  margin: 0 -0.4rem;
+}
+
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.125rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.link {
+  display: inline-flex;
+  align-items: center;
+  white-space: pre;
+  min-height: 44px;
+  padding: 0 0.4rem;
+  color: var(--text-2);
+  font-size: 0.875rem;
+  font-weight: 500;
+  text-decoration: none;
+  border-radius: var(--radius-small);
+  position: relative;
+}
+
+.link:hover {
+  color: var(--text);
+  background: var(--surface-2);
+}
+
+.link[aria-current="page"] {
+  color: var(--text);
+  font-weight: 650;
+}
+
+.link[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 0.4rem;
+  right: 0.4rem;
+  bottom: 6px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--series-model);
+}
+
+.extra {
+  display: none;
+}
+
+.themeToggle {
+  grid-area: toggle;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.themeToggle:hover {
+  background: var(--surface-2);
+}
+
+@media (min-width: 860px) {
+  .inner {
+    grid-template-columns: auto 1fr auto;
+    grid-template-areas: "brand nav toggle";
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+  }
+
+  .nav {
+    margin: 0;
+    justify-self: end;
+  }
+
+  .links {
+    gap: 0.25rem;
+  }
+
+  .link {
+    padding: 0 0.75rem;
+    font-size: 0.9375rem;
+  }
+
+  .extra {
+    display: inline;
+  }
+
+  .link[aria-current="page"]::after {
+    left: 0.75rem;
+    right: 0.75rem;
+  }
+}
