@@ -1,0 +1,52 @@
+.section {
+  margin-top: 3.5rem;
+  scroll-margin-top: 7rem;
+}
+
+.lead {
+  max-width: 46rem;
+  color: var(--text-2);
+  margin-bottom: 1.5rem;
+}
+
+.lead p:last-child {
+  margin-bottom: 0;
+}
+
+.intro {
+  padding-top: 2.5rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.5rem;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.introText {
+  max-width: 46rem;
+  font-size: 1.125rem;
+  color: var(--text-2);
+}
+
+.callout {
+  margin: 1.5rem 0;
+  padding: 1rem 1.25rem;
+  border-left: 3px solid var(--series-model);
+  background: var(--surface);
+  border-radius: 0 var(--radius-small) var(--radius-small) 0;
+  color: var(--text-2);
+}
+
+.callout p:last-child {
+  margin-bottom: 0;
+}
+
+.calloutTitle {
+  margin: 0 0 0.25rem;
+  color: var(--text);
+  font-weight: 650;
+}

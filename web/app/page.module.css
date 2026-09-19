@@ -1,0 +1,146 @@
+.hero {
+  padding: 3rem 0 1rem;
+  max-width: 50rem;
+}
+
+.eyebrow {
+  margin: 0 0 1rem;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.lead {
+  font-size: 1.1875rem;
+  color: var(--text-2);
+  max-width: 44rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 1.75rem;
+}
+
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 48px;
+  padding: 0 1.25rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.primary {
+  background: var(--accent);
+  color: var(--on-accent);
+}
+
+.primary:hover {
+  background: var(--accent-hover);
+  color: var(--on-accent);
+}
+
+.secondary {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.secondary:hover {
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.block {
+  margin-top: 3.5rem;
+}
+
+.blockLead {
+  color: var(--text-2);
+  max-width: 44rem;
+  margin-bottom: 1.5rem;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 1rem;
+  margin: 1.5rem 0 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+
+.steps li {
+  counter-increment: step;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.steps li::before {
+  content: counter(step, decimal-leading-zero);
+  display: block;
+  margin-bottom: 0.5rem;
+  color: var(--accent);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.steps p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.9375rem;
+}
+
+.replayList {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.replayCard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  height: 100%;
+  padding: 1.25rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+  transition:
+    border-color 150ms ease,
+    transform 150ms ease;
+}
+
+.replayCard:hover {
+  color: var(--text);
+  border-color: var(--series-model);
+  transform: translateY(-2px);
+}
+
+.replayTitle {
+  font-weight: 650;
+}
+
+.replayPlayers {
+  color: var(--text-2);
+}
+
+.replayScore {
+  color: var(--muted);
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
