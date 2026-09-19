@@ -95,21 +95,21 @@ Période de test : 4 140 matchs, du 6 janvier 2025 au 7 juin 2026.
 | --- | ---: | ---: | ---: | ---: |
 | Elo par surface (baseline) | 64,8 % | 0,6342 | 0,2208 | 5,2 % |
 | Elo recalibré | 64,8 % | 0,6244 | 0,2178 | 1,9 % |
-| **LightGBM** | **66,4 %** | **0,6031** | **0,2089** | 2,2 % |
+| **LightGBM** | **66,3 %** | **0,6028** | **0,2088** | **1,9 %** |
 
 Écart LightGBM − Elo, avec intervalle de confiance à 95 % (bootstrap apparié, 2 000 tirages) :
 
 | Métrique | Face au Elo | Face au Elo recalibré |
 | --- | --- | --- |
-| Exactitude | +1,6 pt [+0,5 ; +2,8] | +1,6 pt [+0,5 ; +2,8] |
-| Log loss | −0,031 [−0,040 ; −0,022] | −0,021 [−0,029 ; −0,014] |
-| Brier | −0,012 [−0,015 ; −0,008] | −0,009 [−0,012 ; −0,006] |
+| Exactitude | +1,6 pt [+0,4 ; +2,7] | +1,6 pt [+0,4 ; +2,7] |
+| Log loss | −0,031 [−0,041 ; −0,023] | −0,022 [−0,029 ; −0,014] |
+| Brier | −0,012 [−0,016 ; −0,008] | −0,009 [−0,012 ; −0,006] |
 
-**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,6 point d'exactitude, et un tiers des matchs restent mal prédits. Près d'un tiers du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (62,8 % contre 63,7 % d'exactitude sur 1 156 matchs).
+**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,6 point d'exactitude, et un tiers des matchs restent mal prédits. Près d'un tiers du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (63,0 % contre 63,7 % d'exactitude sur 1 156 matchs).
 
 ## Limites connues
 
-- **Joueurs peu connus du modèle** : seuls les matchs du circuit principal sont utilisés (pas les Challengers ni les qualifications), si bien qu'un joueur qui arrive sur le circuit démarre sans historique. Sur la période de test, l'écart reste faible (66,0 % d'exactitude quand l'un des joueurs a moins de 30 matchs en base, 66,6 % sinon), mais ces prévisions reposent sur peu d'information.
+- **Joueurs peu connus du modèle** : seuls les matchs du circuit principal sont utilisés (pas les Challengers ni les qualifications), si bien qu'un joueur qui arrive sur le circuit démarre sans historique. Sur la période de test, l'exactitude ne s'effondre pas (66,5 % quand l'un des joueurs a moins de 30 matchs en base, 66,3 % sinon), mais ces prévisions reposent sur peu d'information.
 - **Blessures et contexte invisibles** : blessure en cours, maladie, motivation, météo, altitude, type de balle, salle ou extérieur ne sont pas dans les données.
 - **Exclusion des abandons** : on ne sait pas avant un match qu'il finira sur abandon ; les retirer de l'évaluation rend les scores légèrement optimistes, pour tous les modèles.
 - **Dates approximatives** : la base ne donne que la date de début du tournoi ; la date de chaque match est estimée selon le tour.
