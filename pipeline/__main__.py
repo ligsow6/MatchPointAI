@@ -1,11 +1,13 @@
 import argparse
+from dataclasses import dataclass
 from datetime import date
 
 import pandas as pd
 
 from pipeline import config
-from pipeline.backtest import HeadlineResult, WalkForwardResult, headline_evaluation, walk_forward
+from pipeline.backtest import headline_evaluation, walk_forward
 from pipeline.data import (
+    DatasetSummary,
     clean_matches,
     download_seasons,
     read_raw_matches,
@@ -13,8 +15,24 @@ from pipeline.data import (
     validate_matches,
 )
 from pipeline.elo import attach_elo
+from pipeline.export import export_all
 from pipeline.features import attach_player_features
-from pipeline.sources import resolve_match_source
+from pipeline.replay import REPLAY_SELECTIONS, MatchReplay, build_replay
+from pipeline.sources import (
+    CHARTING_SOURCE,
+    RemoteSource,
+    download_file,
+    resolve_match_source,
+)
+
+CHARTING_FILES = ("charting-m-matches.csv",)
+
+
+@dataclass(frozen=True)
+class LoadedMatches:
+    matches: pd.DataFrame
+    summary: DatasetSummary
+    source: RemoteSource
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -23,9 +41,9 @@ def parse_arguments() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def load_matches(refresh: bool, today: date) -> pd.DataFrame:
+def load_matches(refresh: bool, today: date) -> LoadedMatches:
     source = resolve_match_source(config.PROBE_FILENAME)
-    print(f"source: {source.repository}@{source.revision}")
+    print(f"source : {source.repository}@{source.revision}")
     seasons = range(config.FIRST_SEASON, today.year + 1)
     paths = download_seasons(source, seasons, config.RAW_DIR, refresh=refresh)
     raw = read_raw_matches(paths)
@@ -33,28 +51,48 @@ def load_matches(refresh: bool, today: date) -> pd.DataFrame:
     validate_matches(clean, today)
     config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     clean.to_csv(config.PROCESSED_DIR / "matches.csv.gz", index=False)
-    print(summarize(clean, raw_rows=len(raw)))
-    return clean
+    return LoadedMatches(clean, summarize(clean, raw_rows=len(raw)), source)
 
 
-def report(headline: HeadlineResult, history: WalkForwardResult) -> None:
-    for model_report in headline.reports:
-        print(f"{model_report.label}: {model_report.scores}")
-    for reference, differences in headline.differences.items():
-        print(f"LightGBM - {reference}: {differences}")
-    print(f"calibration: {headline.calibration.name} {headline.calibration.cross_fitted_log_loss}")
-    print(f"hyperparamètres: {headline.model.parameters} ({headline.model.rounds} arbres)")
-    for year in history.years:
-        print(year.year, {key: round(value.log_loss, 4) for key, value in year.scores.items()})
+def build_replays(
+    matches: pd.DataFrame, predictions: pd.DataFrame, refresh: bool
+) -> list[MatchReplay]:
+    filenames = {*CHARTING_FILES, *(selection.points_file for selection in REPLAY_SELECTIONS)}
+    for filename in sorted(filenames):
+        download_file(CHARTING_SOURCE, filename, config.RAW_DIR, refresh=refresh)
+    charting_dir = config.RAW_DIR / CHARTING_SOURCE.cache_key()
+    return [
+        build_replay(selection, matches, predictions, charting_dir)
+        for selection in REPLAY_SELECTIONS
+    ]
+
+
+def distinct_players(matches: pd.DataFrame) -> int:
+    return int(pd.concat([matches["winner_id"], matches["loser_id"]]).nunique())
 
 
 def main() -> None:
     arguments = parse_arguments()
     today = date.today()
-    matches = attach_player_features(attach_elo(load_matches(arguments.refresh, today)))
+    loaded = load_matches(arguments.refresh, today)
+    print(loaded.summary)
+    matches = attach_player_features(attach_elo(loaded.matches))
     headline = headline_evaluation(matches, config.RANDOM_SEED)
+    for report in headline.reports:
+        print(f"{report.label} : {report.scores}")
     history = walk_forward(matches, last_year=today.year, seed=config.RANDOM_SEED)
-    report(headline, history)
+    replays = build_replays(matches, history.predictions, arguments.refresh)
+    written = export_all(
+        config.OUTPUT_DIR,
+        summary=loaded.summary,
+        source=loaded.source,
+        players=distinct_players(loaded.matches),
+        headline=headline,
+        history=history,
+        replays=replays,
+    )
+    for path in written:
+        print(f"écrit : {path.relative_to(config.ROOT_DIR)}")
 
 
 if __name__ == "__main__":
