@@ -1,0 +1,37 @@
+.tooltip {
+  padding: 0.625rem 0.75rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-small);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  color: var(--text);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+}
+
+.tooltip p {
+  margin: 0;
+}
+
+.heading {
+  font-weight: 650;
+  margin-bottom: 0.25rem !important;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.key {
+  width: 12px;
+  height: 3px;
+  border-radius: 2px;
+  flex: none;
+}

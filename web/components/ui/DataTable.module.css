@@ -1,0 +1,63 @@
+.table {
+  font-size: 0.9375rem;
+  min-width: 100%;
+}
+
+.table caption {
+  text-align: left;
+  font-weight: 600;
+  padding-bottom: 0.5rem;
+  color: var(--text);
+}
+
+.table th,
+.table td {
+  padding: 0.625rem 0.75rem;
+  border-bottom: 1px solid var(--border);
+  text-align: right;
+  white-space: nowrap;
+}
+
+.table th:first-child,
+.table td:first-child {
+  text-align: left;
+  padding-left: 0;
+}
+
+.table thead th {
+  color: var(--text-2);
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.table tbody th {
+  font-weight: 550;
+}
+
+.best {
+  font-weight: 700;
+  color: var(--text);
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.positive {
+  color: var(--positive);
+  font-weight: 600;
+}
+
+.negative {
+  color: var(--negative);
+  font-weight: 600;
+}
+
+.scroll {
+  overflow-x: auto;
+  border-radius: var(--radius-small);
+}
+
+.scroll:focus-visible {
+  outline-offset: 4px;
+}

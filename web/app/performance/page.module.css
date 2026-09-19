@@ -1,0 +1,26 @@
+.glossary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr));
+  gap: 1rem 1.5rem;
+  margin: 1.5rem 0 0;
+  font-size: 0.9375rem;
+}
+
+.glossary dt {
+  font-weight: 650;
+}
+
+.glossary dd {
+  margin: 0.125rem 0 0;
+  color: var(--text-2);
+}
+
+.stack {
+  display: grid;
+  gap: 2rem;
+}
+
+.more {
+  margin-top: 1.5rem;
+  color: var(--text-2);
+}
