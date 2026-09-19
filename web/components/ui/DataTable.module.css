@@ -28,6 +28,27 @@
   color: var(--text-2);
   font-weight: 600;
   font-size: 0.875rem;
+  white-space: normal;
+  vertical-align: bottom;
+}
+
+.table tbody th {
+  white-space: normal;
+}
+
+@media (max-width: 600px) {
+  .table {
+    font-size: 0.875rem;
+  }
+
+  .table th,
+  .table td {
+    padding: 0.5rem 0.25rem;
+  }
+
+  .table thead th {
+    font-size: 0.8125rem;
+  }
 }
 
 .table tbody th {
