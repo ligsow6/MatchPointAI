@@ -11,7 +11,7 @@ from pipeline.backtest import WALK_FORWARD_TUNING_YEAR, HeadlineResult, WalkForw
 from pipeline.data import LEVEL_LABELS, DatasetSummary
 from pipeline.metrics import CalibrationBin, PairedDifference, Scores
 from pipeline.replay import MatchReplay, PointEvent
-from pipeline.sources import SNAPSHOT_COMMIT, RemoteSource
+from pipeline.sources import SNAPSHOT_COMMIT, UPSTREAM_REPOSITORY, SourceResolution
 
 PROBABILITY_DIGITS = 4
 METRIC_DIGITS = 5
@@ -157,13 +157,17 @@ def segment_label(dimension: str, value: str) -> str:
 
 
 def overview_payload(
-    summary: DatasetSummary, source: RemoteSource, headline: HeadlineResult, players: int
+    summary: DatasetSummary, resolution: SourceResolution, headline: HeadlineResult, players: int
 ) -> dict[str, Any]:
+    source = resolution.source
     return {
         "source": {
             "repository": source.repository,
             "revision": source.revision,
             "snapshot": source.revision == SNAPSHOT_COMMIT,
+            "upstream": str(resolution.upstream),
+            "upstreamRepository": UPSTREAM_REPOSITORY,
+            "reason": resolution.reason,
         },
         "dataset": {
             "totalMatches": summary.total_matches,
@@ -490,7 +494,7 @@ def export_all(
     output_dir: Path,
     *,
     summary: DatasetSummary,
-    source: RemoteSource,
+    resolution: SourceResolution,
     players: int,
     headline: HeadlineResult,
     history: WalkForwardResult,
@@ -503,7 +507,7 @@ def export_all(
     for payload in replay_payloads:
         validate_replay(payload)
     files: dict[Path, object] = {
-        output_dir / "overview.json": overview_payload(summary, source, headline, players),
+        output_dir / "overview.json": overview_payload(summary, resolution, headline, players),
         output_dir / "performance.json": performance,
         output_dir / "model.json": model_payload(headline, history),
         output_dir / "replays" / "index.json": [replay_summary(replay) for replay in replays],

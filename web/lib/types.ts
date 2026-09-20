@@ -67,7 +67,14 @@ export type Period = {
 };
 
 export type Overview = {
-  source: { repository: string; revision: string; snapshot: boolean };
+  source: {
+    repository: string;
+    revision: string;
+    snapshot: boolean;
+    upstream: "available" | "missing" | "unreachable";
+    upstreamRepository: string;
+    reason: string;
+  };
   dataset: {
     totalMatches: number;
     completedMatches: number;

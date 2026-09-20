@@ -39,6 +39,7 @@ from pipeline.sources import (
     CHARTING_SOURCE,
     RemoteFileMissingError,
     RemoteSource,
+    SourceResolution,
     download_file,
     resolve_match_source,
 )
@@ -51,8 +52,12 @@ CHARTING_FILES = ("charting-m-matches.csv",)
 class LoadedMatches:
     matches: pd.DataFrame
     summary: DatasetSummary
-    source: RemoteSource
+    resolution: SourceResolution
     profiles_path: Path | None
+
+    @property
+    def source(self) -> RemoteSource:
+        return self.resolution.source
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -69,8 +74,9 @@ def download_profiles(source: RemoteSource, refresh: bool) -> Path | None:
 
 
 def load_matches(refresh: bool, today: date) -> LoadedMatches:
-    source = resolve_match_source(config.PROBE_FILENAME)
-    print(f"source : {source.repository}@{source.revision}")
+    resolution = resolve_match_source(config.PROBE_FILENAME)
+    source = resolution.source
+    print(f"source : {source.repository}@{source.revision} ({resolution.reason})")
     seasons = range(config.FIRST_SEASON, today.year + 1)
     paths = download_seasons(source, seasons, config.RAW_DIR, refresh=refresh)
     raw = read_raw_matches(paths)
@@ -79,7 +85,7 @@ def load_matches(refresh: bool, today: date) -> LoadedMatches:
     config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     clean.to_csv(config.PROCESSED_DIR / "matches.csv.gz", index=False)
     summary = summarize(clean, raw_rows=len(raw))
-    return LoadedMatches(clean, summary, source, download_profiles(source, refresh))
+    return LoadedMatches(clean, summary, resolution, download_profiles(source, refresh))
 
 
 def build_replays(
@@ -119,7 +125,8 @@ def export_comparator(
     report = export_onnx(
         headline.model, held_out_features(matches), config.MODEL_DIR / "matchpoint.onnx"
     )
-    print(f"ONNX : {report.trees} arbres, écart maximal {report.max_difference:.1e}")
+    state = "réécrit" if report.rewritten else "inchangé (prévisions identiques)"
+    print(f"ONNX : {report.trees} arbres, écart maximal {report.max_difference:.1e}, {state}")
     booster = trimmed_booster(headline.model)
     sanity = sanity_cases(
         records,
@@ -159,7 +166,7 @@ def main() -> None:
     written = export_all(
         config.OUTPUT_DIR,
         summary=loaded.summary,
-        source=loaded.source,
+        resolution=loaded.resolution,
         players=distinct_players(loaded.matches),
         headline=headline,
         history=history,

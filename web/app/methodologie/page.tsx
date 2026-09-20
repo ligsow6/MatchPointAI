@@ -143,15 +143,34 @@ export default function MethodologyPage() {
             olympiques) disputés par {formatInteger(dataset.players)} joueurs entre{" "}
             {new Date(dataset.firstDate).getUTCFullYear()} et le {formatDate(dataset.lastDate)}.
           </p>
-          <Callout title="Une source qui a disparu">
-            <p>
-              En septembre 2026, le dépôt original n&apos;est plus accessible publiquement. Le
-              pipeline le tente toujours en premier, puis se replie sur une copie publique épinglée
-              sur le dernier commit publié par l&apos;auteur (<code>{snapshot}</code>, « thru 8 jun
-              2026 »). L&apos;empreinte Git d&apos;un commit dépend de tout son contenu : les
-              fichiers sont donc identiques à l&apos;original.
-            </p>
-          </Callout>
+          {overview.source.upstream === "available" ? (
+            <Callout title="Source d'origine">
+              <p>
+                Au dernier rafraîchissement, les fichiers ont été téléchargés directement depuis le
+                dépôt <code>{overview.source.upstreamRepository}</code> de Jeff Sackmann.
+              </p>
+            </Callout>
+          ) : (
+            <Callout title="Repli sur un instantané épinglé">
+              <p>
+                Au dernier rafraîchissement, le dépôt{" "}
+                <code>{overview.source.upstreamRepository}</code> ne répondait pas :{" "}
+                {overview.source.upstream === "missing"
+                  ? "GitHub renvoyait une erreur 404."
+                  : "il était injoignable (réseau ou erreur serveur)."}{" "}
+                Le pipeline a donc utilisé une copie publique épinglée sur le dernier commit publié
+                par l&apos;auteur (<code>{snapshot}</code>, « thru 8 jun 2026 »). Comme
+                l&apos;empreinte d&apos;un commit Git dépend de tout son contenu, les fichiers sont
+                identiques à l&apos;original, quel que soit le miroir qui les sert.
+              </p>
+              <p>
+                Le dépôt d&apos;origine est retesté à chaque exécution : dès qu&apos;il répond de
+                nouveau, il redevient la source et les fichiers sont retéléchargés. Une panne de
+                réseau et une suppression sont deux diagnostics distincts, et une panne
+                n&apos;entraîne jamais de conclusion hâtive sur la disparition du dépôt.
+              </p>
+            </Callout>
+          )}
           <p>Nettoyage appliqué avant tout calcul :</p>
           <ul>
             <li>
