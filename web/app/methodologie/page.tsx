@@ -324,6 +324,31 @@ export default function MethodologyPage() {
               ? ", la sortie brute de LightGBM étant déjà bien calibrée."
               : "."}
           </p>
+          <h3>Variables testées et écartées</h3>
+          <p>
+            Le jeu de variables n&apos;est pas figé, mais une idée n&apos;est retenue que si elle
+            améliore vraiment les prévisions. La décision ne se prend jamais sur la période de test,
+            qui deviendrait alors un jeu de réglage : elle se prend sur un backtest glissant
+            2015-2024 de 26 785 matchs, à hyperparamètres identiques pour toutes les variantes.
+            Quatre pistes ont été mesurées ainsi, et toutes écartées : les aces et doubles fautes,
+            les balles de break sauvées, la durée des matchs comme indice de fatigue, et un Elo de
+            surface initialisé à l&apos;Elo global plutôt qu&apos;à 1 500.
+          </p>
+          <p>
+            Le service détaillé illustre le piège : il gagnait 0,0019 de log loss sur les{" "}
+            {formatInteger(performance.models[0]?.matches ?? 0)} matchs de test, écart apparemment
+            significatif, mais ne gagnait plus rien (−0,00001) sur six fois plus de matchs. À titre
+            de comparaison, retirer le classement ATP du modèle coûte 0,0046 de log loss, et retirer
+            le service et le retour 0,0022 : les variables conservées ont un effet d&apos;un ordre
+            de grandeur supérieur. Le détail chiffré figure dans le{" "}
+            <a
+              href={`${REPOSITORY_URL}#variables-testées--ce-qui-aide-ce-qui-naide-pas`}
+              rel="noopener"
+            >
+              README
+            </a>
+            .
+          </p>
           <h3>Ce qui pèse dans la décision</h3>
           <ChartFigure
             title="Importance des familles de variables"

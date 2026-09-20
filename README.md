@@ -77,6 +77,41 @@ Les paramètres viennent de la littérature (FiveThirtyEight, Kovalchik 2016) et
 | Profil | âge, taille, main dominante, matchs joués en carrière et sur la surface |
 | Contexte | surface, niveau du tournoi, tour, format 3 ou 5 sets, taille du tableau |
 
+#### Variables testées : ce qui aide, ce qui n'aide pas
+
+Le jeu de variables n'est pas figé, mais chaque idée doit faire ses preuves. Deux règles pour que la mesure veuille dire quelque chose :
+
+- **La période de test ne sert jamais à choisir.** L'utiliser pour trier des variantes la transformerait en jeu de réglage et rendrait optimistes les chiffres affichés. Les décisions se prennent sur un backtest glissant **2015-2024** : chaque saison est prédite par un modèle entraîné sur les saisons antérieures et arrêté sur la précédente, soit **26 785 matchs**, six fois plus que la période de test.
+- **Mêmes hyperparamètres pour toutes les variantes.** Sinon l'écart mesuré mélange l'effet des variables et le hasard de la recherche d'hyperparamètres.
+
+Un Δ négatif améliore la log loss ; les intervalles sont des bootstraps appariés à 95 %.
+
+**Pistes testées et écartées**
+
+| Piste | Δ log loss 2015-2024 (26 785 matchs) | Δ log loss test 2025-2026 (4 140 matchs) | Décision |
+| --- | --- | --- | --- |
+| Aces et doubles fautes par point de service (30 derniers matchs) | −0,00001 [−0,00039 ; +0,00036] | −0,0019 [−0,0029 ; −0,0008] | écartée |
+| Balles de break sauvées (`bpSaved / bpFaced`) | +0,00030 [+0,00002 ; +0,00057] | −0,0002 [−0,0009 ; +0,0005] | écartée, dégrade |
+| Durée des matchs : minutes des 14 derniers jours et moyenne sur 10 matchs | −0,00026 [−0,00075 ; +0,00019] | −0,0010 [−0,0021 ; +0,0002] | écartée |
+| Les trois pistes réunies | −0,00002 [−0,00054 ; +0,00051] | −0,0019 [−0,0035 ; −0,0004] | écartée |
+| Elo de surface initialisé à l'Elo global du joueur au lieu de 1500 | −0,00028 [−0,00069 ; +0,00013] | −0,0001 [−0,0012 ; +0,0010] | écartée |
+
+Le cas du service détaillé mérite qu'on s'y arrête : sur les 4 140 matchs de test, il gagne 0,0019 de log loss, avec un intervalle qui exclut zéro. Sur 26 785 matchs, le même changement ne donne plus rien du tout (−0,00001). Le retenir sur la foi du test aurait donc consisté à ajuster le modèle au hasard de 4 000 matchs. Avec cinq pistes jugées sur deux fenêtres, voir un intervalle exclure zéro par hasard est d'ailleurs attendu. Ces variables sont par ailleurs largement redondantes avec celles déjà présentes : les aces et les doubles fautes sont des composantes des points gagnés au service, les balles de break sauvées en dépendent étroitement, et la fatigue est déjà approchée par les jours de repos et les matchs joués dans le tournoi.
+
+**Ce qui aide vraiment**
+
+Pour vérifier que ce protocole sait détecter un effet, chaque famille déjà présente a été retirée du modèle sur la même fenêtre. Un Δ positif signifie que retirer la famille dégrade les prévisions, donc qu'elle sert :
+
+| Famille retirée | Δ log loss 2015-2024 | Δ exactitude |
+| --- | --- | --- |
+| Classement et points ATP | +0,00460 [+0,00340 ; +0,00569] | −0,56 pt |
+| Service et retour | +0,00224 [+0,00140 ; +0,00309] | −0,24 pt |
+| Forme récente | +0,00078 [+0,00030 ; +0,00126] | −0,22 pt |
+| Repos et fatigue | +0,00066 [+0,00015 ; +0,00118] | −0,25 pt |
+| Face-à-face | +0,00034 [+0,00010 ; +0,00059] | −0,16 pt |
+
+Les cinq familles conservées ont un effet significatif, d'un ordre de grandeur supérieur aux pistes écartées : la mesure n'est donc pas aveugle, elle dit simplement que ces quatre idées n'apportent rien. Le modèle publié conserve ses 57 variables.
+
 Chaque match est présenté deux fois à l'entraînement (du point de vue de chaque joueur) et la prévision moyenne les deux orientations, ce qui garantit `P(A bat B) + P(B bat A) = 1`. La recherche d'hyperparamètres est aléatoire (30 configurations) avec arrêt anticipé sur 2024 ; aucune validation croisée aléatoire n'est utilisée, car elle mélangerait passé et futur. La calibration (aucune, Platt ou isotonique) est choisie par validation croisée sur les deux moitiés de 2024 : la sortie brute, déjà bien calibrée, l'emporte.
 
 ### Comparateur : prédiction à la demande, sans serveur
