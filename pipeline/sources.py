@@ -1,6 +1,9 @@
+import time
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 
 UPSTREAM_REPOSITORY = "JeffSackmann/tennis_atp"
@@ -18,6 +21,8 @@ CHARTING_BRANCH = "master"
 RAW_HOST = "https://raw.githubusercontent.com"
 USER_AGENT = "matchpoint-pipeline/1.0"
 TIMEOUT_SECONDS = 60
+ATTEMPTS = 3
+RETRY_DELAY_SECONDS = 2.0
 
 
 @dataclass(frozen=True)
@@ -41,10 +46,27 @@ CHARTING_SOURCE = RemoteSource(CHARTING_REPOSITORY, CHARTING_BRANCH, immutable=F
 
 
 class RemoteFileMissingError(Exception):
-    pass
+    """Le serveur a répondu : ce fichier n'existe pas (HTTP 404)."""
 
 
-def fetch_bytes(url: str) -> bytes:
+class SourceUnreachableError(Exception):
+    """Aucune réponse exploitable : réseau coupé, délai dépassé, quota ou erreur serveur."""
+
+
+class Availability(StrEnum):
+    AVAILABLE = "available"
+    MISSING = "missing"
+    UNREACHABLE = "unreachable"
+
+
+@dataclass(frozen=True)
+class SourceResolution:
+    source: RemoteSource
+    upstream: Availability
+    reason: str
+
+
+def read_url(url: str) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     try:
         with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
@@ -52,23 +74,74 @@ def fetch_bytes(url: str) -> bytes:
             return payload
     except urllib.error.HTTPError as error:
         if error.code == 404:
-            raise RemoteFileMissingError(url) from error
-        raise
+            raise RemoteFileMissingError(f"{url} : HTTP 404") from error
+        raise SourceUnreachableError(f"{url} : HTTP {error.code}") from error
+    except urllib.error.URLError as error:
+        raise SourceUnreachableError(f"{url} : {error.reason}") from error
+    except TimeoutError as error:
+        raise SourceUnreachableError(f"{url} : délai dépassé") from error
 
 
-def is_available(source: RemoteSource, probe_filename: str) -> bool:
+def fetch_bytes(
+    url: str, attempts: int = ATTEMPTS, sleeper: Callable[[float], None] = time.sleep
+) -> bytes:
+    """Télécharge une URL en réessayant les erreurs transitoires, jamais un 404."""
+    last_error: SourceUnreachableError | None = None
+    for attempt in range(attempts):
+        try:
+            return read_url(url)
+        except SourceUnreachableError as error:
+            last_error = error
+            if attempt + 1 < attempts:
+                sleeper(RETRY_DELAY_SECONDS * (attempt + 1))
+    raise last_error if last_error else SourceUnreachableError(url)
+
+
+def probe(
+    source: RemoteSource,
+    probe_filename: str,
+    attempts: int = ATTEMPTS,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> Availability:
+    """Distingue une source vivante, un fichier réellement absent et une panne de réseau."""
     try:
-        fetch_bytes(source.url(probe_filename))
-    except (RemoteFileMissingError, urllib.error.URLError):
-        return False
-    return True
+        fetch_bytes(source.url(probe_filename), attempts=attempts, sleeper=sleeper)
+    except RemoteFileMissingError:
+        return Availability.MISSING
+    except SourceUnreachableError:
+        return Availability.UNREACHABLE
+    return Availability.AVAILABLE
 
 
-def resolve_match_source(probe_filename: str) -> RemoteSource:
-    for candidate in (UPSTREAM_SOURCE, *SNAPSHOT_SOURCES):
-        if is_available(candidate, probe_filename):
-            return candidate
-    raise RuntimeError("Aucune source de résultats ATP n'est accessible")
+def resolution_reason(upstream: Availability, source: RemoteSource) -> str:
+    if upstream is Availability.AVAILABLE:
+        return "dépôt d'origine accessible"
+    origin = (
+        "le dépôt d'origine répond 404"
+        if upstream is Availability.MISSING
+        else "le dépôt d'origine est injoignable"
+    )
+    return f"{origin}, repli sur l'instantané épinglé {source.repository}@{source.revision[:7]}"
+
+
+def resolve_match_source(
+    probe_filename: str,
+    attempts: int = ATTEMPTS,
+    sleeper: Callable[[float], None] = time.sleep,
+) -> SourceResolution:
+    """Préfère toujours le dépôt d'origine ; ne se replie que si une autre source répond."""
+    upstream = probe(UPSTREAM_SOURCE, probe_filename, attempts=attempts, sleeper=sleeper)
+    if upstream is Availability.AVAILABLE:
+        reason = resolution_reason(upstream, UPSTREAM_SOURCE)
+        return SourceResolution(UPSTREAM_SOURCE, upstream, reason)
+    for mirror in SNAPSHOT_SOURCES:
+        status = probe(mirror, probe_filename, attempts=attempts, sleeper=sleeper)
+        if status is Availability.AVAILABLE:
+            return SourceResolution(mirror, upstream, resolution_reason(upstream, mirror))
+    raise SourceUnreachableError(
+        "Aucune source de résultats ATP n'a répondu, y compris les miroirs : "
+        "le réseau est probablement indisponible"
+    )
 
 
 def download_file(source: RemoteSource, filename: str, cache_dir: Path, refresh: bool) -> Path:
