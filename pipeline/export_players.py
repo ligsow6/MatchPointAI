@@ -80,6 +80,11 @@ def rounded(value: float | None, digits: int) -> float | None:
     return None if value is None else round(value, digits)
 
 
+def significant(value: float, digits: int = 3) -> float:
+    """Arrondi de diagnostic : évite qu'un bruit de calcul ne fasse un nouveau commit."""
+    return float(f"{value:.{digits}g}")
+
+
 def read_profiles(path: Path | None) -> dict[int, PlayerProfile]:
     if path is None or not path.exists():
         return {}
@@ -431,8 +436,8 @@ def model_metadata(
         "trees": trees,
         "parity": {
             "rows": parity_rows,
-            "maxDifference": parity_difference,
-            "float32MaxDifference": float32_difference,
+            "maxDifference": significant(parity_difference),
+            "float32MaxDifference": significant(float32_difference),
         },
         "sanity": list(sanity),
     }

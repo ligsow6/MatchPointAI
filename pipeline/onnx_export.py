@@ -15,6 +15,7 @@ from pipeline.model import TrainedModel
 ONNX_OPSET = 15
 ML_OPSET = 3
 PARITY_TOLERANCE = 1e-6
+EQUIVALENCE_TOLERANCE = 1e-9
 INPUT_NAME = "features"
 OUTPUT_NAME = "probabilities"
 TREE_OPERATOR = "TreeEnsembleClassifier"
@@ -32,6 +33,7 @@ class OnnxReport:
     float32_difference: float
     trees: int
     size_bytes: int
+    rewritten: bool
 
 
 def trimmed_booster(model: TrainedModel) -> lgb.Booster:
@@ -164,18 +166,36 @@ def check_parity(model: onnx.ModelProto, booster: lgb.Booster, features: np.ndar
     return difference
 
 
+def matches_published(model: onnx.ModelProto, path: Path, features: np.ndarray) -> bool:
+    """Le modèle déjà publié donne-t-il exactement les mêmes probabilités que le nouveau ?
+
+    L'entraînement LightGBM n'est pas reproductible au bit près : quelques seuils varient
+    dans leurs derniers chiffres d'une exécution à l'autre, sans rien changer aux prévisions.
+    """
+    if not path.exists():
+        return False
+    published = onnx.load(str(path))
+    difference = np.max(
+        np.abs(onnx_probabilities(published, features) - onnx_probabilities(model, features))
+    )
+    return bool(difference <= EQUIVALENCE_TOLERANCE)
+
+
 def export_onnx(model: TrainedModel, features: np.ndarray, path: Path) -> OnnxReport:
     booster = trimmed_booster(model)
     converted = convert(booster)
     difference = check_parity(converted, booster, features)
     path.parent.mkdir(parents=True, exist_ok=True)
     payload = converted.SerializeToString()
-    path.write_bytes(payload)
+    rewritten = not matches_published(converted, path, features)
+    if rewritten:
+        path.write_bytes(payload)
     return OnnxReport(
         path=path,
         rows=len(features),
         max_difference=difference,
         float32_difference=float32_divergence(booster, features),
         trees=booster.num_trees(),
-        size_bytes=len(payload),
+        size_bytes=path.stat().st_size,
+        rewritten=rewritten,
     )

@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import lightgbm as lgb
@@ -62,6 +63,29 @@ def test_export_writes_verified_model(
     assert report.size_bytes == report.path.stat().st_size
     assert report.rows == len(features)
     assert report.max_difference <= PARITY_TOLERANCE
+    assert report.rewritten is True
+
+
+def test_an_equivalent_model_is_not_republished(
+    trained: tuple[TrainedModel, np.ndarray], tmp_path: Path
+) -> None:
+    model, features = trained
+    target = tmp_path / "model.onnx"
+    export_onnx(model, features, target)
+    stamp = target.stat().st_mtime_ns
+    again = export_onnx(model, features, target)
+    assert again.rewritten is False
+    assert target.stat().st_mtime_ns == stamp
+
+
+def test_a_different_model_is_republished(
+    trained: tuple[TrainedModel, np.ndarray], tmp_path: Path
+) -> None:
+    model, features = trained
+    target = tmp_path / "model.onnx"
+    export_onnx(model, features, target)
+    shorter = replace(model, rounds=max(model.rounds // 2, 1))
+    assert export_onnx(shorter, features, target).rewritten is True
 
 
 def test_parity_check_rejects_a_different_model(trained: tuple[TrainedModel, np.ndarray]) -> None:
