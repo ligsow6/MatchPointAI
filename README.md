@@ -143,23 +143,23 @@ Période de test : 4 140 matchs, du 6 janvier 2025 au 7 juin 2026.
 
 | Modèle | Exactitude | Log loss | Brier | Erreur de calibration |
 | --- | ---: | ---: | ---: | ---: |
-| Elo par surface (baseline) | 64,8 % | 0,6342 | 0,2208 | 5,2 % |
+| Elo surface (baseline) | 64,8 % | 0,6342 | 0,2208 | 5,2 % |
 | Elo recalibré | 64,8 % | 0,6244 | 0,2178 | 1,9 % |
-| **LightGBM** | **66,4 %** | **0,6024** | **0,2087** | **1,8 %** |
+| **LightGBM** | **66,5 %** | **0,6025** | **0,2087** | **1,7 %** |
 
 Écart LightGBM − Elo, avec intervalle de confiance à 95 % (bootstrap apparié, 2 000 tirages) :
 
 | Métrique | Face au Elo | Face au Elo recalibré |
 | --- | --- | --- |
-| Exactitude | +1,6 pt [+0,5 ; +2,8] | +1,6 pt [+0,5 ; +2,8] |
-| Log loss | −0,032 [−0,041 ; −0,023] | −0,022 [−0,029 ; −0,015] |
+| Exactitude | +1,7 pt [+0,6 ; +2,9] | +1,7 pt [+0,6 ; +2,9] |
+| Log loss | −0,032 [−0,040 ; −0,023] | −0,022 [−0,029 ; −0,015] |
 | Brier | −0,012 [−0,016 ; −0,009] | −0,009 [−0,012 ; −0,006] |
 
-**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,6 point d'exactitude, et un tiers des matchs restent mal prédits. Près d'un tiers du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (62,7 % contre 63,7 % d'exactitude sur 1 156 matchs).
+**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,7 point d'exactitude, et 34 % des matchs restent mal prédits. 31 % du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (63,1 % contre 63,7 % d'exactitude sur 1 156 matchs). Quand l'un des deux joueurs compte moins de 30 matchs en base (1 277 matchs de test), l'exactitude vaut 65,9 %, contre 66,7 % sinon.
 
 ## Limites connues
 
-- **Joueurs peu connus du modèle** : seuls les matchs du circuit principal sont utilisés (pas les Challengers ni les qualifications), si bien qu'un joueur qui arrive sur le circuit démarre sans historique. Sur la période de test, l'exactitude baisse peu (65,9 % quand l'un des joueurs a moins de 30 matchs en base, 66,6 % sinon), mais ces prévisions reposent sur peu d'information.
+- **Joueurs peu connus du modèle** : seuls les matchs du circuit principal sont utilisés (pas les Challengers ni les qualifications), si bien qu'un joueur qui arrive sur le circuit démarre sans historique. Sur la période de test, l'exactitude baisse peu (voir le chiffre dans la section Résultats), mais ces prévisions reposent sur peu d'information.
 - **Blessures et contexte invisibles** : blessure en cours, maladie, motivation, météo, altitude, type de balle, salle ou extérieur ne sont pas dans les données.
 - **Exclusion des abandons** : on ne sait pas avant un match qu'il finira sur abandon ; les retirer de l'évaluation rend les scores légèrement optimistes, pour tous les modèles.
 - **Dates approximatives** : la base ne donne que la date de début du tournoi ; la date de chaque match est estimée selon le tour.
@@ -217,4 +217,5 @@ docs/                capture du replay
 
 - **`ci.yml`** (à chaque push et pull request) : ruff, mypy et pytest pour le pipeline ; ESLint, TypeScript, Prettier, Vitest et build pour le site ; audit Lighthouse de toutes les pages en mobile et en ordinateur, qui échoue sous 95 en accessibilité.
 - **`refresh-data.yml`** (chaque lundi, et à chaque modification du pipeline) : télécharge les dernières données, relance tout le pipeline, vérifie le nouveau modèle dans `onnxruntime-web` (Vitest), puis commit les JSON et le modèle (`chore: met à jour les données ATP`) uniquement s'ils ont changé. Ce commit déclenche un nouveau déploiement.
+- **Chiffres du README** : la section [Résultats](#résultats) n'est pas saisie à la main, elle est régénérée à partir de `performance.json` et `overview.json` à chaque exécution du pipeline. Un réentraînement ne tombe pas sur le même nombre d'arbres d'une machine à l'autre, ce qui déplace les métriques de quelques millièmes ; sans cela le README affirmerait chaque semaine des chiffres que le site contredit. Un test vérifie que la section correspond aux fichiers publiés et fait échouer la CI sinon.
 - **Vercel** : le projet Vercel a pour *Root Directory* `web` ; le fichier [`web/vercel.json`](web/vercel.json) y décrit la construction du site statique (`npm ci`, `npm run build`, dossier `out`). Chaque push sur `main` est déployé automatiquement.

@@ -34,6 +34,7 @@ from pipeline.features import (
     winner_perspective,
 )
 from pipeline.onnx_export import export_onnx, trimmed_booster
+from pipeline.readme import synchronise
 from pipeline.replay import REPLAY_SELECTIONS, MatchReplay, build_replay
 from pipeline.sources import (
     CHARTING_SOURCE,
@@ -173,6 +174,9 @@ def main() -> None:
         replays=replays,
     )
     written.extend(export_comparator(loaded, matches, headline))
+    readme_path = config.ROOT_DIR / "README.md"
+    if synchronise(readme_path, config.OUTPUT_DIR):
+        written.append(readme_path)
     for path in written:
         print(f"écrit : {path.relative_to(config.ROOT_DIR)}")
 
