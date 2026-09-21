@@ -145,17 +145,17 @@ Période de test : 4 140 matchs, du 6 janvier 2025 au 7 juin 2026.
 | --- | ---: | ---: | ---: | ---: |
 | Elo surface (baseline) | 64,8 % | 0,6342 | 0,2208 | 5,2 % |
 | Elo recalibré | 64,8 % | 0,6244 | 0,2178 | 1,9 % |
-| **LightGBM** | **66,5 %** | **0,6025** | **0,2087** | **1,7 %** |
+| **LightGBM** | **66,4 %** | **0,6024** | **0,2087** | **1,8 %** |
 
 Écart LightGBM − Elo, avec intervalle de confiance à 95 % (bootstrap apparié, 2 000 tirages) :
 
 | Métrique | Face au Elo | Face au Elo recalibré |
 | --- | --- | --- |
-| Exactitude | +1,7 pt [+0,6 ; +2,9] | +1,7 pt [+0,6 ; +2,9] |
-| Log loss | −0,032 [−0,040 ; −0,023] | −0,022 [−0,029 ; −0,015] |
+| Exactitude | +1,6 pt [+0,5 ; +2,8] | +1,6 pt [+0,5 ; +2,8] |
+| Log loss | −0,032 [−0,041 ; −0,023] | −0,022 [−0,029 ; −0,015] |
 | Brier | −0,012 [−0,016 ; −0,009] | −0,009 [−0,012 ; −0,006] |
 
-**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,7 point d'exactitude, et 34 % des matchs restent mal prédits. 31 % du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (63,1 % contre 63,7 % d'exactitude sur 1 156 matchs). Quand l'un des deux joueurs compte moins de 30 matchs en base (1 277 matchs de test), l'exactitude vaut 65,9 %, contre 66,7 % sinon.
+**Ce que ça signifie.** LightGBM bat la baseline de façon statistiquement significative sur les trois métriques, mais le gain reste modeste : 1,6 point d'exactitude, et 34 % des matchs restent mal prédits. 31 % du gain en log loss vient simplement d'une meilleure calibration (le Elo classique est trop sûr de lui) ; le reste est une information que le Elo seul ne capte pas. Sur le backtest annuel 2006–2026, LightGBM obtient une meilleure log loss que le Elo sur les 21 saisons. En revanche, il fait légèrement moins bien que le Elo en Masters 1000 (62,7 % contre 63,7 % d'exactitude sur 1 156 matchs). Quand l'un des deux joueurs compte moins de 30 matchs en base (1 277 matchs de test), l'exactitude vaut 65,9 %, contre 66,6 % sinon.
 
 ## Limites connues
 
