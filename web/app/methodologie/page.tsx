@@ -413,7 +413,7 @@ export default function MethodologyPage() {
         <Section id="comparateur" title="Comparateur de joueurs">
           <p>
             Le comparateur utilise exactement le modèle évalué plus haut, sans aucun serveur. À
-            chaque rafraîchissement, le pipeline exporte trois fichiers :
+            chaque réentraînement, le pipeline exporte trois fichiers :
           </p>
           <ul>
             <li>
@@ -557,9 +557,10 @@ export default function MethodologyPage() {
 
         <Section id="reproduire" title="Reproduire les résultats">
           <p>
-            Tout le code est public sur <a href={REPOSITORY_URL}>GitHub</a>. Un workflow
-            hebdomadaire relance le pipeline et met à jour les fichiers publiés si les données ont
-            changé.
+            Tout le code est public sur <a href={REPOSITORY_URL}>GitHub</a>. Chaque semaine, un
+            workflow vérifie si les données ou le code du pipeline ont changé ; seulement dans ce
+            cas, il réentraîne le modèle et met à jour les fichiers publiés. Réentraîner sur des
+            entrées identiques n&apos;apporterait rien et ferait varier les résultats sans raison.
           </p>
           <pre className={styles.code}>
             <code>{`python -m venv .venv && source .venv/bin/activate
