@@ -89,12 +89,15 @@ def load_matches(refresh: bool, today: date) -> LoadedMatches:
     return LoadedMatches(clean, summary, resolution, download_profiles(source, refresh))
 
 
-def build_replays(
-    matches: pd.DataFrame, predictions: pd.DataFrame, refresh: bool
-) -> list[MatchReplay]:
+def download_charting(refresh: bool) -> list[Path]:
     filenames = {*CHARTING_FILES, *(selection.points_file for selection in REPLAY_SELECTIONS)}
-    for filename in sorted(filenames):
+    return [
         download_file(CHARTING_SOURCE, filename, config.RAW_DIR, refresh=refresh)
+        for filename in sorted(filenames)
+    ]
+
+
+def build_replays(matches: pd.DataFrame, predictions: pd.DataFrame) -> list[MatchReplay]:
     charting_dir = config.RAW_DIR / CHARTING_SOURCE.cache_key()
     return [
         build_replay(selection, matches, predictions, charting_dir)
@@ -158,12 +161,13 @@ def main() -> None:
     today = date.today()
     loaded = load_matches(arguments.refresh, today)
     print(loaded.summary)
+    download_charting(arguments.refresh)
     matches = attach_player_features(attach_elo(loaded.matches))
     headline = headline_evaluation(matches, config.RANDOM_SEED)
     for report in headline.reports:
         print(f"{report.label} : {report.scores}")
     history = walk_forward(matches, last_year=today.year, seed=config.RANDOM_SEED)
-    replays = build_replays(matches, history.predictions, arguments.refresh)
+    replays = build_replays(matches, history.predictions)
     written = export_all(
         config.OUTPUT_DIR,
         summary=loaded.summary,
