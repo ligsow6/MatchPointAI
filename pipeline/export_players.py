@@ -31,6 +31,7 @@ from pipeline.features import (
     serve_rates,
     win_rate,
 )
+from pipeline.fingerprint import FINGERPRINT_KEY
 
 SURFACE_SUFFIXES = {"Hard": "Hard", "Clay": "Clay", "Grass": "Grass"}
 COLUMNS = (
@@ -425,6 +426,7 @@ def model_metadata(
     float32_difference: float,
     trained_through: date,
     sanity: Sequence[Mapping[str, object]],
+    input_fingerprint: str,
 ) -> dict[str, object]:
     return {
         "file": "matchpoint.onnx",
@@ -440,4 +442,5 @@ def model_metadata(
             "float32MaxDifference": significant(float32_difference),
         },
         "sanity": list(sanity),
+        FINGERPRINT_KEY: input_fingerprint,
     }

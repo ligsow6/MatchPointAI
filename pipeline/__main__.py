@@ -33,6 +33,7 @@ from pipeline.features import (
     replay_history,
     winner_perspective,
 )
+from pipeline.fingerprint import input_fingerprint, pipeline_sources
 from pipeline.onnx_export import export_onnx, trimmed_booster
 from pipeline.readme import synchronise
 from pipeline.replay import REPLAY_SELECTIONS, MatchReplay, build_replay
@@ -55,10 +56,16 @@ class LoadedMatches:
     summary: DatasetSummary
     resolution: SourceResolution
     profiles_path: Path | None
+    season_paths: tuple[Path, ...]
 
     @property
     def source(self) -> RemoteSource:
         return self.resolution.source
+
+    @property
+    def files(self) -> list[Path]:
+        profiles = [self.profiles_path] if self.profiles_path is not None else []
+        return [*self.season_paths, *profiles]
 
 
 def parse_arguments() -> argparse.Namespace:
@@ -86,7 +93,8 @@ def load_matches(refresh: bool, today: date) -> LoadedMatches:
     config.PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
     clean.to_csv(config.PROCESSED_DIR / "matches.csv.gz", index=False)
     summary = summarize(clean, raw_rows=len(raw))
-    return LoadedMatches(clean, summary, resolution, download_profiles(source, refresh))
+    profiles = download_profiles(source, refresh)
+    return LoadedMatches(clean, summary, resolution, profiles, tuple(paths))
 
 
 def download_charting(refresh: bool) -> list[Path]:
@@ -116,7 +124,7 @@ def held_out_features(matches: pd.DataFrame) -> np.ndarray:
 
 
 def export_comparator(
-    loaded: LoadedMatches, matches: pd.DataFrame, headline: HeadlineResult
+    loaded: LoadedMatches, matches: pd.DataFrame, headline: HeadlineResult, fingerprint: str
 ) -> list[Path]:
     """Exporte l'état des joueurs, les face-à-face et le modèle ONNX vérifié à 1e-6 près."""
     data_through = loaded.summary.last_date
@@ -151,6 +159,7 @@ def export_comparator(
             float32_difference=report.float32_difference,
             trained_through=headline.periods[0].end,
             sanity=sanity,
+            input_fingerprint=fingerprint,
         ),
     )
     return [*written, report.path, metadata_path]
@@ -161,7 +170,9 @@ def main() -> None:
     today = date.today()
     loaded = load_matches(arguments.refresh, today)
     print(loaded.summary)
-    download_charting(arguments.refresh)
+    charting = download_charting(arguments.refresh)
+    fingerprint = input_fingerprint([*loaded.files, *charting], pipeline_sources())
+    print(f"empreinte des entrées : {fingerprint[:12]}")
     matches = attach_player_features(attach_elo(loaded.matches))
     headline = headline_evaluation(matches, config.RANDOM_SEED)
     for report in headline.reports:
@@ -177,7 +188,7 @@ def main() -> None:
         history=history,
         replays=replays,
     )
-    written.extend(export_comparator(loaded, matches, headline))
+    written.extend(export_comparator(loaded, matches, headline, fingerprint))
     readme_path = config.ROOT_DIR / "README.md"
     if synchronise(readme_path, config.OUTPUT_DIR):
         written.append(readme_path)
