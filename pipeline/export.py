@@ -156,19 +156,23 @@ def segment_label(dimension: str, value: str) -> str:
     return value[0].upper() + value[1:]
 
 
+def source_payload(resolution: SourceResolution) -> dict[str, Any]:
+    source = resolution.source
+    return {
+        "repository": source.repository,
+        "revision": source.revision,
+        "snapshot": source.revision == SNAPSHOT_COMMIT,
+        "upstream": str(resolution.upstream),
+        "upstreamRepository": UPSTREAM_REPOSITORY,
+        "reason": resolution.reason,
+    }
+
+
 def overview_payload(
     summary: DatasetSummary, resolution: SourceResolution, headline: HeadlineResult, players: int
 ) -> dict[str, Any]:
-    source = resolution.source
     return {
-        "source": {
-            "repository": source.repository,
-            "revision": source.revision,
-            "snapshot": source.revision == SNAPSHOT_COMMIT,
-            "upstream": str(resolution.upstream),
-            "upstreamRepository": UPSTREAM_REPOSITORY,
-            "reason": resolution.reason,
-        },
+        "source": source_payload(resolution),
         "dataset": {
             "totalMatches": summary.total_matches,
             "completedMatches": summary.completed_matches,
@@ -488,6 +492,15 @@ def write_json(path: Path, payload: object) -> None:
         payload, ensure_ascii=False, allow_nan=False, indent=None, separators=(",", ":")
     )
     path.write_text(text + "\n", encoding="utf-8")
+
+
+def refresh_source_status(path: Path, resolution: SourceResolution) -> bool:
+    overview = json.loads(path.read_text(encoding="utf-8"))
+    status = source_payload(resolution)
+    if overview.get("source") == status:
+        return False
+    write_json(path, {**overview, "source": status})
+    return True
 
 
 def export_all(

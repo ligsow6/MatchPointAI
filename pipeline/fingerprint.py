@@ -39,6 +39,10 @@ def input_fingerprint(
     return digest.hexdigest()
 
 
+def must_rebuild(fingerprint: str, published: str | None, force: bool) -> bool:
+    return force or fingerprint != published
+
+
 def published_fingerprint(metadata_path: Path) -> str | None:
     if not metadata_path.exists():
         return None

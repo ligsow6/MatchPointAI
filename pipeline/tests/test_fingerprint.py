@@ -5,6 +5,7 @@ from pipeline import config
 from pipeline.fingerprint import (
     FINGERPRINT_KEY,
     input_fingerprint,
+    must_rebuild,
     pipeline_sources,
     published_fingerprint,
 )
@@ -82,3 +83,10 @@ def test_published_fingerprint_is_read_from_the_metadata(tmp_path: Path) -> None
     assert published_fingerprint(metadata) is None
     metadata.write_text(json.dumps({FINGERPRINT_KEY: "abc"}), encoding="utf-8")
     assert published_fingerprint(metadata) == "abc"
+
+
+def test_the_model_is_rebuilt_only_for_new_inputs_or_on_request() -> None:
+    assert must_rebuild("abc", "abc", force=False) is False
+    assert must_rebuild("abc", "abd", force=False) is True
+    assert must_rebuild("abc", None, force=False) is True
+    assert must_rebuild("abc", "abc", force=True) is True

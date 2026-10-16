@@ -17,7 +17,7 @@ from pipeline.data import (
     validate_matches,
 )
 from pipeline.elo import attach_elo, final_ratings
-from pipeline.export import export_all, write_json
+from pipeline.export import export_all, refresh_source_status, write_json
 from pipeline.export_players import (
     head_to_head_records,
     model_metadata,
@@ -33,7 +33,12 @@ from pipeline.features import (
     replay_history,
     winner_perspective,
 )
-from pipeline.fingerprint import input_fingerprint, pipeline_sources
+from pipeline.fingerprint import (
+    input_fingerprint,
+    must_rebuild,
+    pipeline_sources,
+    published_fingerprint,
+)
 from pipeline.onnx_export import export_onnx, trimmed_booster
 from pipeline.readme import synchronise
 from pipeline.replay import REPLAY_SELECTIONS, MatchReplay, build_replay
@@ -48,6 +53,8 @@ from pipeline.sources import (
 from pipeline.splits import TEST
 
 CHARTING_FILES = ("charting-m-matches.csv",)
+METADATA_PATH = config.MODEL_DIR / "metadata.json"
+README_PATH = config.ROOT_DIR / "README.md"
 
 
 @dataclass(frozen=True)
@@ -71,6 +78,9 @@ class LoadedMatches:
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(prog="pipeline", description="MatchPoint data pipeline")
     parser.add_argument("--refresh", action="store_true", help="re-download mutable raw files")
+    parser.add_argument(
+        "--force", action="store_true", help="retrain even when the inputs are unchanged"
+    )
     return parser.parse_args()
 
 
@@ -147,9 +157,8 @@ def export_comparator(
         headline.calibration.transform,
         data_through,
     )
-    metadata_path = config.MODEL_DIR / "metadata.json"
     write_json(
-        metadata_path,
+        METADATA_PATH,
         model_metadata(
             feature_list=feature_names(),
             calibration=headline.calibration.transform,
@@ -162,17 +171,15 @@ def export_comparator(
             input_fingerprint=fingerprint,
         ),
     )
-    return [*written, report.path, metadata_path]
+    return [*written, report.path, METADATA_PATH]
 
 
-def main() -> None:
-    arguments = parse_arguments()
-    today = date.today()
-    loaded = load_matches(arguments.refresh, today)
-    print(loaded.summary)
-    charting = download_charting(arguments.refresh)
-    fingerprint = input_fingerprint([*loaded.files, *charting], pipeline_sources())
-    print(f"empreinte des entrées : {fingerprint[:12]}")
+def keep_published(resolution: SourceResolution) -> list[Path]:
+    overview_path = config.OUTPUT_DIR / "overview.json"
+    return [overview_path] if refresh_source_status(overview_path, resolution) else []
+
+
+def rebuild(loaded: LoadedMatches, today: date, fingerprint: str) -> list[Path]:
     matches = attach_player_features(attach_elo(loaded.matches))
     headline = headline_evaluation(matches, config.RANDOM_SEED)
     for report in headline.reports:
@@ -189,9 +196,25 @@ def main() -> None:
         replays=replays,
     )
     written.extend(export_comparator(loaded, matches, headline, fingerprint))
-    readme_path = config.ROOT_DIR / "README.md"
-    if synchronise(readme_path, config.OUTPUT_DIR):
-        written.append(readme_path)
+    return written
+
+
+def main() -> None:
+    arguments = parse_arguments()
+    today = date.today()
+    loaded = load_matches(arguments.refresh, today)
+    print(loaded.summary)
+    charting = download_charting(arguments.refresh)
+    fingerprint = input_fingerprint([*loaded.files, *charting], pipeline_sources())
+    published = published_fingerprint(METADATA_PATH)
+    print(f"empreinte des entrées : {fingerprint[:12]}, publiée : {(published or 'aucune')[:12]}")
+    if must_rebuild(fingerprint, published, arguments.force):
+        written = rebuild(loaded, today, fingerprint)
+    else:
+        print("entrées inchangées depuis la dernière publication : modèle et données conservés")
+        written = keep_published(loaded.resolution)
+    if synchronise(README_PATH, config.OUTPUT_DIR):
+        written.append(README_PATH)
     for path in written:
         print(f"écrit : {path.relative_to(config.ROOT_DIR)}")
 

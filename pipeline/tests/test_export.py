@@ -9,11 +9,19 @@ from pipeline.export import (
     ExportValidationError,
     difference_payload,
     feature_description,
+    refresh_source_status,
     rounded,
     validate_replay,
     write_json,
 )
 from pipeline.metrics import PairedDifference
+from pipeline.sources import (
+    SNAPSHOT_SOURCES,
+    UPSTREAM_SOURCE,
+    Availability,
+    SourceResolution,
+    resolution_reason,
+)
 
 
 def replay_document(**overrides: Any) -> dict[str, Any]:
@@ -89,3 +97,32 @@ def test_write_json_refuses_nan(tmp_path: Path) -> None:
         "value": 0.5,
         "label": "É",
     }
+
+
+def resolution(upstream: Availability) -> SourceResolution:
+    source = UPSTREAM_SOURCE if upstream is Availability.AVAILABLE else SNAPSHOT_SOURCES[0]
+    return SourceResolution(source, upstream, resolution_reason(upstream, source))
+
+
+def published_overview(tmp_path: Path, upstream: Availability) -> Path:
+    path = tmp_path / "overview.json"
+    write_json(path, {"source": {}, "dataset": {"totalMatches": 12}, "periods": [{"name": "test"}]})
+    refresh_source_status(path, resolution(upstream))
+    return path
+
+
+def test_an_unchanged_source_status_leaves_the_overview_untouched(tmp_path: Path) -> None:
+    path = published_overview(tmp_path, Availability.MISSING)
+    before = path.read_bytes()
+    assert refresh_source_status(path, resolution(Availability.MISSING)) is False
+    assert path.read_bytes() == before
+
+
+def test_a_returning_upstream_is_published_without_touching_the_rest(tmp_path: Path) -> None:
+    path = published_overview(tmp_path, Availability.MISSING)
+    assert refresh_source_status(path, resolution(Availability.AVAILABLE)) is True
+    overview = json.loads(path.read_text(encoding="utf-8"))
+    assert list(overview) == ["source", "dataset", "periods"]
+    assert overview["source"]["upstream"] == "available"
+    assert overview["source"]["snapshot"] is False
+    assert overview["dataset"] == {"totalMatches": 12}
